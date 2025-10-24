@@ -1,0 +1,4095 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>MasterDuel Assistant</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg1:#0f2027; --bg2:#203a43; --bg3:#2c5364;
+    --card: rgba(255,255,255,0.03);
+    --text: #dbe7ff;
+    --muted: #9aa4b2;
+    --accent1:#7c5cff; --accent2:#33c2ff;
+    --good:#23c46b; --warn:#f0b429; --bad:#ff6b6b; --empty:#101418;
+    --panel-pad:18px;
+    --transition: 220ms;
+    --bg-opacity: 1;
+    --card-opacity: 1;
+    --input-bg: rgba(255,255,255,0.05);
+    --input-border: rgba(255,255,255,0.1);
+    --dropdown-bg: rgba(30, 41, 59, 0.9);
+    --dropdown-border: rgba(255,255,255,0.1);
+    --dropdown-hover: rgba(255,255,255,0.08);
+  }
+
+  [data-theme="blue"] {
+    --bg1: #0a1929; --bg2: #1a3658; --bg3: #2a4b7c;
+    --input-bg: rgba(255,255,255,0.06);
+    --input-border: rgba(255,255,255,0.12);
+    --dropdown-bg: rgba(26, 54, 93, 0.9);
+    --dropdown-border: rgba(255,255,255,0.15);
+    --dropdown-hover: rgba(255,255,255,0.1);
+  }
+
+  [data-theme="green"] {
+    --bg1: #0d2615; --bg2: #1a472a; --bg3: #276845;
+    --input-bg: rgba(255,255,255,0.05);
+    --input-border: rgba(255,255,255,0.1);
+    --dropdown-bg: rgba(26, 71, 42, 0.9);
+    --dropdown-border: rgba(255,255,255,0.1);
+    --dropdown-hover: rgba(255,255,255,0.08);
+  }
+
+  [data-theme="purple"] {
+    --bg1: #1a0d2e; --bg2: #2d1a4c; --bg3: #45277a;
+    --input-bg: rgba(255,255,255,0.05);
+    --input-border: rgba(255,255,255,0.1);
+    --dropdown-bg: rgba(45, 26, 76, 0.9);
+    --dropdown-border: rgba(255,255,255,0.1);
+    --dropdown-hover: rgba(255,255,255,0.08);
+  }
+
+  *{box-sizing:border-box}
+  html,body{min-height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial;background:linear-gradient(135deg, 
+    var(--bg1), 
+    var(--bg2), 
+    var(--bg3));color:var(--text);background-attachment:fixed}
+  .app{max-width:1400px;margin:0 auto;padding:18px}
+  .tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+  .tab{padding:10px 14px;border-radius:10px;background:rgba(255,255,255,0.02);cursor:pointer;border:1px solid rgba(255,255,255,0.03);font-weight:600;transition:background var(--transition),transform var(--transition);font-size:14px}
+  .tab.active{background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#041023;transform:translateY(-2px)}
+  .panels{position:relative;min-height:500px}
+  .panel{position:absolute;inset:0;opacity:0;transform:translateY(6px);pointer-events:none;padding:6px;transition:opacity .28s ease, transform .28s ease}
+  .panel.show{opacity:1;transform:translateY(0);pointer-events:auto}
+  .session-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .session-select{background:var(--input-bg);border:1px solid var(--input-border);color:inherit;padding:10px;border-radius:10px;min-width:240px}
+  .btn{background:linear-gradient(180deg,var(--accent1),var(--accent2));border:none;color:#041023;padding:9px 12px;border-radius:10px;font-weight:700;cursor:pointer;transition:all var(--transition)}
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,92,255,0.3)}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer;transition:all var(--transition)}
+  .btn-ghost:hover{background:rgba(255,255,255,0.05);transform:translateY(-1px)}
+  .btn-warning{background:linear-gradient(180deg,var(--warn),#d89e00);color:#041023}
+  .input-panel{display:flex;gap:12px;align-items:center;background:var(--card);padding:var(--panel-pad);border-radius:12px;border:1px solid rgba(255,255,255,0.03);box-shadow:0 8px 24px rgba(2,6,23,0.4)}
+  .group{display:flex;flex-direction:column;gap:6px;min-width:150px;flex:1}
+  select{background:var(--input-bg);border:1px solid var(--input-border);color:inherit;padding:10px;border-radius:10px}
+  input{background:var(--input-bg);border:1px solid var(--input-border);padding:10px;border-radius:10px;color:inherit}
+  .add-deck{background:transparent;border:1px dashed rgba(255,255,255,0.06);padding:8px;border-radius:8px;color:var(--muted);cursor:pointer}
+  .cols{display:grid;grid-template-columns:1fr 480px;gap:18px;margin-top:14px}
+  .card{background: rgba(255,255,255, calc(0.02 * var(--card-opacity)));padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{padding:10px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:center;font-size:14px}
+  th{background:rgba(255,255,255,0.02);font-weight:700;color:#cfe6ff}
+  .small{font-size:13px;color:var(--muted)}
+  .matrix table{width:100%;border-collapse:collapse}
+  .matrix th,.matrix td{padding:6px;border:1px solid rgba(255,255,255,0.03)}
+  .matrix .cell{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px;border-radius:6px;font-weight:700}
+  .matrix .pct{font-size:14px}
+  .matrix .wl{font-size:12px;opacity:0.95}
+  .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .meta-grid table{width:100%}
+  .footer-note{margin-top:10px;color:var(--muted);font-size:13px}
+  .alert-text{color:var(--bad);font-weight:700;margin-top:8px}
+  .sidebar{padding:12px}
+  #pointsChart{max-height:200px;width:100%!important}
+  .chart-container{position:relative;height:200px;width:100%;overflow:hidden}
+  .matrix-container{max-height:400px;overflow:auto}
+  .matrix table{min-width:auto;table-layout:fixed}
+  .matrix th,.matrix td{min-width:80px;max-width:120px;word-wrap:break-word}
+  .deck-perf-container{max-height:none;overflow:visible}
+  #deckPerfTable{width:100%}
+  #deckPerfTable th:nth-child(1){width:25%}
+  #deckPerfTable th:nth-child(2){width:12%}
+  #deckPerfTable th:nth-child(3){width:12%}
+  #deckPerfTable th:nth-child(4){width:15%}
+  #deckPerfTable th:nth-child(5){width:15%}
+  #deckPerfTable th:nth-child(6){width:15%}
+  .editable-points{background:transparent;border:1px solid transparent;border-radius:4px;padding:4px;width:60px;text-align:center;transition:all 0.2s}
+  .editable-points:hover{border-color:var(--accent1);background:rgba(124,92,255,0.1)}
+  .editable-points:focus{outline:none;border-color:var(--accent1);background:rgba(124,92,255,0.15)}
+  .settings-group{margin-bottom:20px}
+  .settings-label{display:flex;justify-content:space-between;margin-bottom:8px}
+  .theme-options{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-top:10px}
+  .theme-option{padding:12px;border-radius:8px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all var(--transition);background:rgba(255,255,255,0.05)}
+  .theme-option:hover{background:rgba(255,255,255,0.08)}
+  .theme-option.active{border-color:var(--accent1);background:rgba(124,92,255,0.1)}
+  .theme-preview{width:100%;height:40px;border-radius:4px;margin-bottom:8px}
+  .formula-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .formula-option{padding:16px;border-radius:8px;text-align:center;cursor:pointer;border:2px solid transparent;transition:all var(--transition);background:rgba(255,255,255,0.05)}
+  .formula-option:hover{background:rgba(255,255,255,0.08)}
+  .formula-option.active{border-color:var(--accent1);background:rgba(124,92,255,0.1)}
+  .formula-title{font-weight:700;margin-bottom:8px;font-size:16px}
+  .formula-desc{font-size:12px;color:var(--muted);line-height:1.4}
+  .simulator-controls{display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap;align-items:flex-end}
+  .simulator-result{text-align:center;margin:20px 0}
+  .result-display{font-size:32px;font-weight:bold;color:var(--accent1)}
+  .deck-combo-inputs{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .input-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .textarea-container{position:relative}
+  .quick-add-panel{background:rgba(255,255,255,0.05);border-radius:8px;padding:12px;margin-top:8px;border:1px solid rgba(255,255,255,0.1)}
+  .quick-add-inputs{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end}
+  .quick-add-btn{background:var(--accent1);border:none;color:white;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:12px}
+  .quick-add-btn:hover{background:var(--accent2)}
+  .card-list{max-height:200px;overflow-y:auto;margin-top:8px;background:rgba(255,255,255,0.02);border-radius:6px;padding:8px}
+  .card-item{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.05)}
+  .card-item:last-child{border-bottom:none}
+  .card-actions{display:flex;gap:4px}
+  .card-action-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;padding:2px 6px}
+  .card-action-btn:hover{color:var(--text)}
+  .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity 0.3s ease}
+  .modal-overlay.active{opacity:1;pointer-events:auto}
+  .modal-dialog{background:var(--bg2);border-radius:12px;padding:24px;width:90%;max-width:400px;border:1px solid rgba(255,255,255,0.1);box-shadow:0 10px 30px rgba(0,0,0,0.5);transform:translateY(20px);transition:transform 0.3s ease}
+  .modal-overlay.active .modal-dialog{transform:translateY(0)}
+  .modal-header{margin-bottom:16px}
+  .modal-title{font-size:18px;font-weight:700;margin:0;color:var(--text)}
+  .modal-body{margin-bottom:20px}
+  .modal-input{width:100%;padding:12px;border-radius:8px;background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);font-size:16px}
+  .modal-input:focus{outline:none;border-color:var(--accent1)}
+  .modal-footer{display:flex;justify-content:flex-end;gap:10px}
+  .prediction-card{background:var(--card);padding:16px;border-radius:10px;margin-bottom:16px;border-left:4px solid var(--accent1)}
+  .comparison-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .analysis-section{margin-bottom:24px}
+  .stat-card{background:rgba(255,255,255,0.02);padding:16px;border-radius:8px;text-align:center;border:1px solid rgba(255,255,255,0.03)}
+  .stat-value{font-size:24px;font-weight:700;color:var(--accent2);margin-bottom:8px}
+  .stat-label{font-size:14px;color:var(--muted)}
+  .progress-bar{height:8px;background:rgba(255,255,255,0.05);border-radius:4px;overflow:hidden;margin-top:8px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent1),var(--accent2));border-radius:4px;transition:width 0.5s ease}
+  .win-probability{font-size:32px;font-weight:700;text-align:center;margin:16px 0;background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .confidence-meter{height:10px;background:rgba(255,255,255,0.1);border-radius:5px;margin:12px 0;overflow:hidden}
+  .confidence-fill{height:100%;background:linear-gradient(90deg,var(--good),var(--warn));border-radius:5px}
+  .matchup-details{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  .matchup-stat{text-align:center;padding:12px;background:rgba(255,255,255,0.02);border-radius:8px}
+  .session-stats{display:flex;gap:16px;margin-top:8px}
+  .session-stat{display:flex;flex-direction:column;align-items:center;padding:8px;background:rgba(255,255,255,0.02);border-radius:6px;min-width:80px}
+  .session-stat-value{font-weight:700;font-size:14px}
+  .session-stat-label{font-size:11px;color:var(--muted);margin-top:4px}
+  .optional-section{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.05)}
+  .optional-label{font-size:12px;color:var(--muted);margin-bottom:4px}
+  .view-controls{display:flex;gap:8px;margin-bottom:12px}
+  .view-control-btn{padding:6px 12px;border-radius:6px;background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);cursor:pointer;font-size:12px;transition:all var(--transition)}
+  .view-control-btn.active{background:var(--accent1);color:#041023}
+  .circle-selector{margin-bottom:12px}
+  .deck-list-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .deck-list-card{background:var(--card);padding:16px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
+  .deck-list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .deck-list-image{width:100%;border-radius:8px;margin-bottom:12px;background:var(--input-bg);min-height:200px;display:flex;align-items:center;justify-content:center;color:var(--muted)}
+  .deck-list-stats{display:flex;gap:12px}
+  .deck-list-stat{display:flex;flex-direction:column;align-items:center;flex:1}
+  .deck-list-stat-value{font-weight:700;font-size:16px}
+  .deck-list-stat-label{font-size:12px;color:var(--muted)}
+  .best-decks-container{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-top:16px}
+  .best-deck-card{background:var(--card);padding:16px;border-radius:8px;text-align:center;border:1px solid rgba(255,255,255,0.03)}
+  .best-deck-name{font-weight:700;margin-bottom:8px}
+  .best-deck-wr{font-size:24px;font-weight:700;color:var(--accent2);margin-bottom:4px}
+  .best-deck-matches{font-size:12px;color:var(--muted)}
+  .delete-btn{background:none;border:none;color:var(--bad);cursor:pointer;padding:4px;border-radius:4px;transition:all var(--transition)}
+  .delete-btn:hover{background:rgba(255,107,107,0.1);transform:scale(1.1)}
+  
+  /* New Styles for API Integration and New Features */
+  .logout-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: all 0.3s;
+  }
+  
+  .logout-btn:hover {
+    background: rgba(255,107,107,0.1);
+    border-color: var(--bad);
+  }
+  
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  
+  .admin-panel {
+    background: rgba(255,255,255,0.02);
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  .admin-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .tier-list-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .tier-item {
+    background: var(--card);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  .tier-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+  }
+  
+  .tier-actions {
+    padding: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .tier-score {
+    font-weight: bold;
+    color: var(--accent2);
+  }
+  
+  .action-buttons {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .like-btn, .dislike-btn {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.3s;
+  }
+  
+  .like-btn:hover { color: var(--good); }
+  .dislike-btn:hover { color: var(--bad); }
+  
+  .like-btn.active { color: var(--good); }
+  .dislike-btn.active { color: var(--bad); }
+  
+  .tourney-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .tourney-item {
+    background: var(--card);
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  .tourney-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  
+  .tourney-title {
+    font-weight: bold;
+    font-size: 18px;
+    color: var(--text);
+  }
+  
+  .tourney-date {
+    color: var(--muted);
+    font-size: 14px;
+  }
+  
+  .tourney-links {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+  }
+  
+  .leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+  }
+  
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+  
+  .leaderboard-table tr:hover {
+    background: rgba(255,255,255,0.02);
+  }
+  
+  .rank-1 { background: linear-gradient(90deg, rgba(255,215,0,0.1), transparent); }
+  .rank-2 { background: linear-gradient(90deg, rgba(192,192,192,0.1), transparent); }
+  .rank-3 { background: linear-gradient(90deg, rgba(205,127,50,0.1), transparent); }
+  
+  .view-stats-btn {
+    background: var(--accent1);
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  
+  .player-stats-modal {
+    max-width: 90%;
+    width: 1000px;
+  }
+  
+  .player-stats-content {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  @media (max-width:980px){ 
+    .cols{grid-template-columns:1fr} 
+    .input-panel{flex-direction:column;align-items:stretch} 
+    .session-select{width:100%} 
+    .comparison-grid{grid-template-columns:1fr}
+    .matchup-details{grid-template-columns:1fr}
+    .theme-options{grid-template-columns:repeat(2,1fr)}
+    .formula-options{grid-template-columns:1fr}
+    .deck-combo-inputs{grid-template-columns:1fr}
+    .simulator-controls{flex-direction:column}
+    .quick-add-inputs{grid-template-columns:1fr}
+    .session-stats{flex-wrap:wrap}
+    .deck-list-container{grid-template-columns:1fr}
+    .best-decks-container{grid-template-columns:repeat(2,1fr)}
+    .tier-list-grid{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width:600px){ 
+    .best-decks-container{grid-template-columns:1fr}
+    .tier-list-grid{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <div class="tabs" role="tablist" aria-label="Main tabs">
+      <div class="tab active" data-tab="submit">Match Submission</div>
+      <div class="tab" data-tab="stats">Stats & Matrix</div>
+      <div class="tab" data-tab="predictions">Predictions</div>
+      <div class="tab" data-tab="comparison">Deck Comparison</div>
+      <div class="tab" data-tab="analysis">Advanced Analysis</div>
+      <div class="tab" data-tab="simulator">Probability Simulator</div>
+      <div class="tab" data-tab="meta">Meta Feed</div>
+      <div class="tab" data-tab="sessions">Sessions</div>
+      <div class="tab" data-tab="deck-lists">Deck Lists</div>
+      <div class="tab" data-tab="other-players">Other Players</div>
+      <div class="tab" data-tab="tier-list">Non-Engine Tier List</div>
+      <div class="tab" data-tab="tourneys">Tourneys Schedule</div>
+      <div class="tab" data-tab="settings">Settings</div>
+      <div class="user-info">
+        <span id="usernameDisplay">User</span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="panels">
+      <section id="panel-submit" class="panel show" role="tabpanel" aria-labelledby="submit-tab">
+        <div class="session-row" style="margin-bottom:12px">
+          <select id="sessionSelect" class="session-select" aria-label="Select session"></select>
+          <button id="openSessionsBtn" class="btn-ghost">Manage Sessions</button>
+          <div style="flex:1"></div>
+        </div>
+
+        <div class="input-panel" role="region" aria-label="Match input">
+          <div class="group">
+            <label class="small">Your Deck</label>
+            <div style="display:flex;gap:8px">
+              <select id="deckSelect" aria-label="Your deck"></select>
+              <button id="addDeckBtn" class="add-deck" title="Add deck">➕</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <label class="small">Opponent's Deck</label>
+            <div style="display:flex;gap:8px">
+              <select id="oppSelect" aria-label="Opponent deck"></select>
+              <button id="addOppBtn" class="add-deck" title="Add opponent deck">➕</button>
+            </div>
+          </div>
+
+          <div class="group" style="min-width:120px">
+            <label class="small">Result</label>
+            <select id="resultSelect" aria-label="Result">
+              <option>Win</option>
+              <option>Loss</option>
+            </select>
+          </div>
+
+          <div class="group" style="min-width:110px">
+            <label class="small">Turn Order</label>
+            <select id="turnOrder" aria-label="Turn order">
+              <option value="1st">1st</option>
+              <option value="2nd">2nd</option>
+            </select>
+          </div>
+
+          <div class="group" style="min-width:120px">
+            <label class="small">Pts After (Optional)</label>
+            <input type="text" id="ptsAfterOverride" placeholder="Auto" aria-label="Points after override">
+            <div class="optional-label">Leave empty for automatic calculation</div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end">
+            <div style="display:flex;gap:8px">
+              <button id="addMatchBtn" class="btn">Add Match</button>
+              <button id="clearSessionBtn" class="btn-ghost">Clear Session</button>
+            </div>
+            <div class="small" style="text-align:right" id="pointsInfo">Start: <strong>1500</strong> • Win: <strong>+7</strong> • Loss: <strong>-7</strong></div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div class="small">Matches (current session)</div>
+            <div id="summaryLine" class="small">Matches: 0 • Points: 1500 • Winrate: 0%</div>
+          </div>
+
+          <table id="matchesTable" aria-live="polite">
+            <thead><tr><th>Your Deck</th><th>Opponent</th><th>Result</th><th>Turn</th><th>Pts Before</th><th>Pts After</th></tr></thead>
+            <tbody></tbody>
+          </table>
+
+          <div id="alertBox" class="alert-text" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <section id="panel-stats" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="cols">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small">Progress (Line)</div>
+              <div class="small" id="chartInfo">Points over matches</div>
+            </div>
+            <div class="chart-container">
+              <canvas id="pointsChart"></canvas>
+            </div>
+
+            <div style="margin-top:14px" class="matrix">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <h3 style="margin:0;color:var(--muted)">Matchup Matrix</h3>
+                <div class="view-controls">
+                  <button class="view-control-btn active" data-matrix-view="all">All Players</button>
+                  <button class="view-control-btn" data-matrix-view="current">Current Player</button>
+                </div>
+              </div>
+              <div id="matrixContainer" class="matrix-container"></div>
+            </div>
+          </div>
+
+          <div class="card sidebar deck-perf-container">
+            <div class="small" style="margin-bottom:8px">Deck Performance</div>
+            <table id="deckPerfTable">
+              <thead>
+                <tr>
+                  <th>Deck</th>
+                  <th>Matches</th>
+                  <th>Wins</th>
+                  <th>WR Overall</th>
+                  <th>WR 1st</th>
+                  <th>WR 2nd</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div class="footer-note">Matrix colors: green=good • yellow=neutral • red=weak</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-predictions" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="cols">
+          <div class="card">
+            <h3 style="margin:6px 0;color:var(--muted)">Match Outcome Predictions</h3>
+            <div class="prediction-card">
+              <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
+                <div class="group" style="flex:1">
+                  <label class="small">Your Deck</label>
+                  <select id="predDeckSelect" aria-label="Your deck for prediction"></select>
+                </div>
+                <div class="group" style="flex:1">
+                  <label class="small">Opponent's Deck</label>
+                  <select id="predOppSelect" aria-label="Opponent deck for prediction"></select>
+                </div>
+                <div class="group" style="min-width:110px">
+                  <label class="small">Turn Order</label>
+                  <select id="predTurnOrder" aria-label="Turn order for prediction">
+                    <option value="1st">1st</option>
+                    <option value="2nd">2nd</option>
+                  </select>
+                </div>
+                <button id="predictBtn" class="btn" style="align-self:flex-end">Predict</button>
+              </div>
+              
+              <div id="predictionResult" style="display:none">
+                <div class="win-probability" id="winProbability">65%</div>
+                <div style="text-align:center;color:var(--muted);margin-bottom:16px">Predicted Win Probability</div>
+                
+                <div class="confidence-meter">
+                  <div class="confidence-fill" id="confidenceFill" style="width:75%"></div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted)">
+                  <span>Low Confidence</span>
+                  <span id="confidenceValue">75% Confidence</span>
+                  <span>High Confidence</span>
+                </div>
+                
+                <div class="matchup-details">
+                  <div class="matchup-stat">
+                    <div class="stat-value" id="overallWR">62%</div>
+                    <div class="stat-label">Overall Win Rate</div>
+                  </div>
+                  <div class="matchup-stat">
+                    <div class="stat-value" id="turnWR">58%</div>
+                    <div class="stat-label">Win Rate This Turn</div>
+                  </div>
+                  <div class="matchup-stat">
+                    <div class="stat-value" id="matchupWR">67%</div>
+                    <div class="stat-label">Matchup Win Rate</div>
+                  </div>
+                  <div class="matchup-stat">
+                    <div class="stat-value" id="recentWR">70%</div>
+                    <div class="stat-label">Recent Form</div>
+                  </div>
+                </div>
+                
+                <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.02);border-radius:8px">
+                  <div style="font-weight:700;margin-bottom:8px">Prediction Insight</div>
+                  <div id="predictionInsight" class="small">Based on your historical performance, you have a solid advantage in this matchup, especially when going first.</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="prediction-card">
+              <h4 style="margin:0 0 12px 0;color:var(--muted)">Recommended Decks vs Current Meta</h4>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Deck</th>
+                    <th>Predicted WR</th>
+                    <th>Confidence</th>
+                    <th>Meta Score</th>
+                  </tr>
+                </thead>
+                <tbody id="recommendedDecks">
+                  <!-- Will be populated with data -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div class="card sidebar">
+            <h3 style="margin:6px 0;color:var(--muted)">Prediction Factors</h3>
+            <div class="small" style="margin-bottom:12px">Our predictions are based on:</div>
+            <ul style="padding-left:20px;color:var(--muted);font-size:14px;line-height:1.5">
+              <li>Historical matchup data</li>
+              <li>Your performance with specific decks</li>
+              <li>Turn order advantages</li>
+              <li>Recent performance trends</li>
+              <li>Meta game analysis</li>
+            </ul>
+            <div class="footer-note" style="margin-top:16px">Predictions improve as you add more match data.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-comparison" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="card">
+          <h3 style="margin:6px 0;color:var(--muted)">Deck Comparison Tool</h3>
+          <div style="display:flex;gap:16px;margin-bottom:20px;flex-wrap:wrap">
+            <div class="group" style="flex:1;min-width:200px">
+              <label class="small">First Deck</label>
+              <select id="compareDeck1" aria-label="First deck to compare"></select>
+            </div>
+            <div class="group" style="flex:1;min-width:200px">
+              <label class="small">Second Deck</label>
+              <select id="compareDeck2" aria-label="Second deck to compare"></select>
+            </div>
+            <button id="compareBtn" class="btn" style="align-self:flex-end">Compare</button>
+          </div>
+          
+          <div id="comparisonResult" style="display:none">
+            <div class="comparison-grid">
+              <div class="card">
+                <h4 style="text-align:center;margin:0 0 16px 0;color:var(--muted)" id="deck1Name">Deck 1</h4>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck1WR">0%</div>
+                  <div class="stat-label">Win Rate</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck1Matches">0</div>
+                  <div class="stat-label">Total Matches</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck1Streak">0</div>
+                  <div class="stat-label">Best Win Streak</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck1Turn1WR">0%</div>
+                  <div class="stat-label">Win Rate Going 1st</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck1Turn2WR">0%</div>
+                  <div class="stat-label">Win Rate Going 2nd</div>
+                </div>
+              </div>
+              
+              <div class="card">
+                <h4 style="text-align:center;margin:0 0 16px 0;color:var(--muted)" id="deck2Name">Deck 2</h4>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck2WR">0%</div>
+                  <div class="stat-label">Win Rate</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck2Matches">0</div>
+                  <div class="stat-label">Total Matches</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck2Streak">0</div>
+                  <div class="stat-label">Best Win Streak</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck2Turn1WR">0%</div>
+                  <div class="stat-label">Win Rate Going 1st</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="deck2Turn2WR">0%</div>
+                  <div class="stat-label">Win Rate Going 2nd</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card" style="margin-top:16px">
+              <h4 style="margin:0 0 12px 0;color:var(--muted)">Head-to-Head Analysis</h4>
+              <div id="h2hAnalysis" class="small">
+                <!-- Will be populated with analysis -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-analysis" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="cols">
+          <div class="card">
+            <h3 style="margin:6px 0;color:var(--muted)">Advanced Performance Analysis</h3>
+            
+            <div class="analysis-section">
+              <h4 style="margin:16px 0 12px 0;color:var(--muted)">Performance Trends</h4>
+              <div class="chart-container">
+                <canvas id="trendChart"></canvas>
+              </div>
+            </div>
+            
+            <div class="analysis-section">
+              <h4 style="margin:16px 0 12px 0;color:var(--muted)">Key Performance Indicators</h4>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));gap:12px">
+                <div class="stat-card">
+                  <div class="stat-value" id="avgWinRate">0%</div>
+                  <div class="stat-label">Average Win Rate</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="consistencyScore">0</div>
+                  <div class="stat-label">Consistency Score</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="improvementRate">0%</div>
+                  <div class="stat-label">Improvement Rate</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" id="metaAdaptation">0%</div>
+                  <div class="stat-label">Meta Adaptation</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="analysis-section">
+              <h4 style="margin:16px 0 12px 0;color:var(--muted)">Performance Breakdown</h4>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+                <div class="card">
+                  <h5 style="margin:0 0 12px 0;color:var(--muted)">By Time of Day</h5>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Period</th>
+                        <th>Matches</th>
+                        <th>Win Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody id="timeAnalysis">
+                      <!-- Will be populated with data -->
+                    </tbody>
+                  </table>
+                </div>
+                <div class="card">
+                  <h5 style="margin:0 0 12px 0;color:var(--muted)">By Session Length</h5>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Matches/Session</th>
+                        <th>Win Rate</th>
+                        <th>Frequency</th>
+                      </tr>
+                    </thead>
+                    <tbody id="sessionAnalysis">
+                      <!-- Will be populated with data -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="card sidebar">
+            <h3 style="margin:6px 0;color:var(--muted)">Strategic Insights</h3>
+            <div id="strategicInsights" class="small">
+              <!-- Will be populated with strategic insights -->
+            </div>
+            <div class="footer-note" style="margin-top:16px">Insights are generated based on your play patterns and match history.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-simulator" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="cols">
+          <div class="deck-simulator-container">
+            <div class="card">
+              <h3 style="margin:6px 0;color:var(--muted)">Probability Simulator</h3>
+              
+              <div class="simulator-controls">
+                <div class="group" style="flex:1;min-width:200px">
+                  <label class="small">Hand Size</label>
+                  <input type="number" id="simHandSize" class="modal-input" value="5" min="1" max="20">
+                </div>
+                <div class="group" style="flex:1;min-width:200px">
+                  <label class="small">Trials</label>
+                  <input type="number" id="simTrials" class="modal-input" value="100000" min="1000" max="10000000">
+                </div>
+                <div class="group" style="display:flex;align-items:flex-end;gap:8px">
+                  <input type="checkbox" id="autoSimulate" class="btn-check" checked>
+                  <label for="autoSimulate" class="btn-ghost">Auto-simulate</label>
+                  <button id="simulateBtn" class="btn">Simulate</button>
+                </div>
+              </div>
+
+              <div class="simulator-result">
+                <div class="result-display">
+                  <span id="simulationResult">0%</span>
+                </div>
+                <div class="small" style="color:var(--muted)">Probability of drawing combo</div>
+              </div>
+
+              <div class="deck-combo-inputs">
+                <div class="deck-input">
+                  <div class="input-header">
+                    <label class="small">Deck List</label>
+                    <div>
+                      <select id="deckPreset" class="form-select" style="display:inline-block;width:auto;margin-right:8px">
+                        <option value="default">Default Deck</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                      <button id="newDeckBtn" class="btn-ghost">New</button>
+                    </div>
+                  </div>
+                  <div class="textarea-container">
+                    <textarea id="deckText" class="modal-input font-monospace" rows="15" spellcheck="false" style="width:100%;resize:vertical">
+# Add your deck here
+40 total
+3 card a
+3 card b
+3 card c
+3 card d
+3 card e
+3 card f
+1 card g
+2 draw2
+3 pickfrom6</textarea>
+                  </div>
+                </div>
+
+                <div class="combo-input">
+                  <div class="input-header">
+                    <label class="small">Combo Requirements</label>
+                    <div>
+                      <select id="comboPreset" class="form-select" style="display:inline-block;width:auto;margin-right:8px">
+                        <option value="default">Default Combo</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                      <button id="newComboBtn" class="btn-ghost">New</button>
+                    </div>
+                  </div>
+                  <div class="textarea-container">
+                    <textarea id="comboText" class="modal-input font-monospace" rows="15" spellcheck="false" style="width:100%;resize:vertical">
+# Add your combo requirements here
+card a
+card b + (card c | card d)
+card b + 2 card e
+card b + card f + -1 card g</textarea>
+                  </div>
+                </div>
+              </div>
+
+              <div class="simulator-errors">
+                <div id="deckErrors" class="alert-text"></div>
+                <div id="comboErrors" class="alert-text"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card sidebar">
+            <h3 style="margin:6px 0;color:var(--muted)">How to Use</h3>
+            <div class="small" style="margin-bottom:12px">
+              Calculate the probability of drawing specific card combinations from your deck.
+            </div>
+            <ul style="padding-left:20px;color:var(--muted);font-size:14px;line-height:1.5">
+              <li><strong>Deck Format:</strong> One card per line: "3 Card Name"</li>
+              <li><strong>Total:</strong> Use "40 total" to set deck size</li>
+              <li><strong>Combos:</strong> Use + for AND, | for OR</li>
+              <li><strong>Copies:</strong> "2 card" means 2 copies</li>
+              <li><strong>In Deck:</strong> "-1 card" means must remain in deck</li>
+            </ul>
+            <div class="footer-note" style="margin-top:16px">
+              Special cards: draw2 (draw 2 extra), pickfrom6 (pick 1 from 6)
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-meta" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="cols">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small">Meta Feed</div>
+              <div class="view-controls">
+                <button class="view-control-btn active" data-meta-view="all">All Players</button>
+                <button class="view-control-btn" data-meta-view="current">Current Player</button>
+                <button class="view-control-btn" data-meta-view="circle">Circle</button>
+              </div>
+            </div>
+
+            <div class="circle-selector" id="circleSelector" style="display:none">
+              <div class="small" style="margin-bottom:6px">Select Rating Circle</div>
+              <select id="circleSelect" class="modal-input">
+                <option value="1500-1550">1500-1550</option>
+                <option value="1550-1600">1550-1600</option>
+                <option value="1600-1650">1600-1650</option>
+                <option value="1650-1700">1650-1700</option>
+                <option value="1700-1750">1700-1750</option>
+                <option value="1750-1800">1750-1800</option>
+                <option value="1800-1850">1800-1850</option>
+                <option value="1850-1900">1850-1900</option>
+                <option value="1900+">1900+</option>
+              </select>
+            </div>
+
+            <div class="meta-grid" style="margin-top:12px">
+              <div class="card">
+                <div style="font-weight:700;margin-bottom:8px">Your Deck Usage</div>
+                <table id="metaYour"><thead><tr><th>Deck</th><th>Times</th><th>Winrate</th></tr></thead><tbody></tbody></table>
+              </div>
+              <div class="card">
+                <div style="font-weight:700;margin-bottom:8px">Opponent Deck Usage</div>
+                <table id="metaOpp"><thead><tr><th>Deck</th><th>Times</th><th>Winrate</th></tr></thead><tbody></tbody></table>
+              </div>
+            </div>
+
+            <div class="footer-note">Data updates automatically after each match. Export JSON to backup.</div>
+          </div>
+
+          <div class="card sidebar">
+            <div class="small" style="margin-bottom:8px">Export / Import</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button id="exportSessionBtn" class="btn-ghost">Export Session</button>
+              <button id="exportAllBtn2" class="btn-ghost">Export All</button>
+              <button id="importSessionBtn" class="btn-ghost">Import File</button>
+              <input type="file" id="importFileInput" accept="application/json" style="display:none">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-sessions" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="card">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+            <input id="newSessionName" placeholder="New session name" style="flex:1;padding:10px;border-radius:8px;background:var(--input-bg);border:1px solid var(--input-border)">
+            <button id="createSessionBtn" class="btn">Create</button>
+            <button id="refreshSessionsBtn" class="btn-ghost">Refresh</button>
+          </div>
+
+          <div id="sessionList" style="display:flex;flex-direction:column;gap:8px;max-height:320px;overflow:auto"></div>
+          <div class="footer-note">Sessions are stored in the cloud. Click "Manage Sessions" in Match Submission to quickly jump.</div>
+        </div>
+      </section>
+
+      <section id="panel-deck-lists" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="card">
+          <h3 style="margin:6px 0;color:var(--muted)">Deck Lists</h3>
+          <div class="small" style="margin-bottom:16px">Create and manage your deck lists</div>
+          
+          <div style="display:flex;gap:12px;margin-bottom:16px">
+            <button id="addDeckListBtn" class="btn">Add New Deck List</button>
+          </div>
+          
+          <h4 style="margin:24px 0 12px 0;color:var(--muted)">Best Performing Decks</h4>
+          <div id="bestDecksContainer" class="best-decks-container">
+            <!-- Will be populated with best decks -->
+          </div>
+          
+          <h4 style="margin:24px 0 12px 0;color:var(--muted)">All Deck Lists</h4>
+          <div id="deckListsContainer" class="deck-list-container">
+            <!-- Will be populated with deck lists -->
+          </div>
+        </div>
+      </section>
+
+      <!-- New Tab: Other Players -->
+      <section id="panel-other-players" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="card">
+          <h3 style="margin:6px 0;color:var(--muted)">Players Leaderboard</h3>
+          
+          <div class="view-controls" style="margin-bottom:20px">
+            <button class="view-control-btn active" data-formula="rated">Rated Formula</button>
+            <button class="view-control-btn" data-formula="dc">DC Formula</button>
+          </div>
+          
+          <table class="leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Player</th>
+                <th>Points</th>
+                <th>Matches</th>
+                <th>Win Rate</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardBody">
+              <!-- Will be populated with data -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- New Tab: Non-Engine Tier List -->
+      <section id="panel-tier-list" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="card">
+          <h3 style="margin:6px 0;color:var(--muted)">Non-Engine Tier List</h3>
+          
+          <div id="adminTierPanel" class="admin-panel" style="display:none">
+            <h4>Admin Controls</h4>
+            <div class="admin-controls">
+              <input type="file" id="tierImageUpload" accept="image/*" style="display:none">
+              <button class="btn" onclick="document.getElementById('tierImageUpload').click()">Upload Image</button>
+              <input type="text" id="tierImageUrl" placeholder="Or enter image URL" style="flex:1">
+              <button class="btn" onclick="addTierItem()">Add to Tier List</button>
+            </div>
+          </div>
+          
+          <div class="tier-list-grid" id="tierListContainer">
+            <!-- Will be populated with data -->
+          </div>
+        </div>
+      </section>
+
+      <!-- New Tab: Tourneys Schedule -->
+      <section id="panel-tourneys" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="card">
+          <h3 style="margin:6px 0;color:var(--muted)">Tournaments Schedule</h3>
+          
+          <div id="adminTourneyPanel" class="admin-panel" style="display:none">
+            <h4>Admin Controls</h4>
+            <div style="display:grid;gap:15px">
+              <input type="text" id="tourneyTitle" placeholder="Tournament Title">
+              <textarea id="tourneyDescription" placeholder="Tournament Description" rows="3"></textarea>
+              <input type="datetime-local" id="tourneyDate">
+              <input type="text" id="tourneyRegisterUrl" placeholder="Registration URL">
+              <input type="text" id="tourneyDiscordUrl" placeholder="Discord URL">
+              <button class="btn" onclick="addTournament()">Add Tournament</button>
+            </div>
+          </div>
+          
+          <div class="tourney-list" id="tourneyListContainer">
+            <!-- Will be populated with data -->
+          </div>
+        </div>
+      </section>
+
+      <section id="panel-settings" class="panel" role="tabpanel" aria-hidden="true">
+        <div class="cols">
+          <div class="card">
+            <h3 style="margin:6px 0;color:var(--muted)">Appearance Settings</h3>
+            
+            <div class="settings-group">
+              <div class="small" style="margin-bottom:8px">Theme</div>
+              <div class="theme-options">
+                <div class="theme-option active" data-theme="default">
+                  <div class="theme-preview" style="background:linear-gradient(135deg,#0f2027,#203a43,#2c5364)"></div>
+                  <div class="small">Default</div>
+                </div>
+                <div class="theme-option" data-theme="blue">
+                  <div class="theme-preview" style="background:linear-gradient(135deg,#0a1929,#1a3658,#2a4b7c)"></div>
+                  <div class="small">Blue</div>
+                </div>
+                <div class="theme-option" data-theme="green">
+                  <div class="theme-preview" style="background:linear-gradient(135deg,#0d2615,#1a472a,#276845)"></div>
+                  <div class="small">Green</div>
+                </div>
+                <div class="theme-option" data-theme="purple">
+                  <div class="theme-preview" style="background:linear-gradient(135deg,#1a0d2e,#2d1a4c,#45277a)"></div>
+                  <div class="small">Purple</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="settings-group">
+              <div class="small" style="margin-bottom:8px">Points Formula</div>
+              <div class="formula-options">
+                <div class="formula-option active" data-formula="rated">
+                  <div class="formula-title">Rated Formula</div>
+                  <div class="formula-desc">Start: 1500 • Win: +7 • Loss: -7</div>
+                </div>
+                <div class="formula-option" data-formula="dc">
+                  <div class="formula-title">DC Formula</div>
+                  <div class="formula-desc">Start: 0k • Win: +1k • Loss: -1k (or -0.5k if below 15k)</div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="margin-top:24px">
+              <button id="resetSettings" class="btn-ghost">Reset to Default</button>
+            </div>
+          </div>
+          
+          <div class="card sidebar">
+            <h3 style="margin:6px 0;color:var(--muted)">About</h3>
+            <div class="small" style="margin-bottom:12px">
+              MasterDuel Assistant - Advanced Version
+            </div>
+            <div class="small" style="line-height:1.5">
+              Track your matches, analyze performance, and improve your strategy with advanced analytics and predictions.
+            </div>
+            <div class="footer-note" style="margin-top:16px">
+              All data is stored securely in the cloud. Your data is accessible from any device.
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Modals -->
+  <div id="deckModal" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Add New Deck</h3>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="deckNameInput" class="modal-input" placeholder="Enter deck name" autofocus>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelDeckBtn" class="btn-ghost">Cancel</button>
+        <button id="confirmDeckBtn" class="btn">Add Deck</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="sessionModal" class="modal-overlay">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 class="modal-title">Create New Session</h3>
+      </div>
+      <div class="modal-body">
+        <div class="group">
+          <label class="small">Session Name</label>
+          <input type="text" id="sessionNameInput" class="modal-input" placeholder="Enter session name">
+        </div>
+        <div class="group" style="margin-top:16px">
+          <label class="small">Points Formula</label>
+          <select id="sessionFormulaSelect" class="modal-input">
+            <option value="rated">Rated Formula (1500 start, ±7)</option>
+            <option value="dc">DC Formula (0k start, ±1k/-0.5k)</option>
+          </select>
+        </div>
+        <div class="group" style="margin-top:16px">
+          <label class="small">Starting Points</label>
+          <input type="number" id="sessionStartPoints" class="modal-input" placeholder="1500">
+          <div class="small" style="margin-top:4px">Leave empty for default starting points</div>
+        </div>
+        <div class="group" style="margin-top:16px">
+          <label class="small">Default Deck</label>
+          <select id="sessionDefaultDeck" class="modal-input">
+            <option value="">No default deck</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelSessionBtn" class="btn-ghost">Cancel</button>
+        <button id="confirmSessionBtn" class="btn">Create Session</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="deckListModal" class="modal-overlay">
+    <div class="modal-dialog" style="max-width:500px">
+      <div class="modal-header">
+        <h3 class="modal-title">Add Deck List</h3>
+      </div>
+      <div class="modal-body">
+        <div class="group">
+          <label class="small">Deck Name</label>
+          <input type="text" id="deckListName" class="modal-input" placeholder="Enter deck name">
+        </div>
+        <div class="group" style="margin-top:16px">
+          <label class="small">Deck Image URL (Optional)</label>
+          <input type="text" id="deckListImage" class="modal-input" placeholder="https://example.com/deck-image.jpg">
+        </div>
+        <div class="group" style="margin-top:16px">
+          <label class="small">Deck Description (Optional)</label>
+          <textarea id="deckListDescription" class="modal-input" placeholder="Describe your deck strategy..." rows="3"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="cancelDeckListBtn" class="btn-ghost">Cancel</button>
+        <button id="confirmDeckListBtn" class="btn">Add Deck List</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="playerStatsModal" class="modal-overlay">
+    <div class="modal-dialog player-stats-modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Player Statistics - <span id="playerStatsName"></span></h3>
+      </div>
+      <div class="modal-body player-stats-content" id="playerStatsContent">
+        <!-- Player stats will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button id="closePlayerStatsBtn" class="btn-ghost">Close</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+// API Configuration
+const API_BASE = 'https://your-api-domain.com/api'; // Change this to your actual API domain
+let currentUser = null;
+let authToken = null;
+let pointsChart = null;
+let trendChart = null;
+
+// Default decks
+const defaultDecks = ["Branded","Ryzeal Mitsu","Mitsu Pure","Mitsu FS","Orcust","Maliss"];
+
+// DOM references
+const deckModal = document.getElementById('deckModal');
+const deckNameInput = document.getElementById('deckNameInput');
+const cancelDeckBtn = document.getElementById('cancelDeckBtn');
+const confirmDeckBtn = document.getElementById('confirmDeckBtn');
+
+const sessionModal = document.getElementById('sessionModal');
+const sessionNameInput = document.getElementById('sessionNameInput');
+const sessionFormulaSelect = document.getElementById('sessionFormulaSelect');
+const sessionStartPoints = document.getElementById('sessionStartPoints');
+const sessionDefaultDeck = document.getElementById('sessionDefaultDeck');
+const cancelSessionBtn = document.getElementById('cancelSessionBtn');
+const confirmSessionBtn = document.getElementById('confirmSessionBtn');
+
+const deckListModal = document.getElementById('deckListModal');
+const deckListName = document.getElementById('deckListName');
+const deckListImage = document.getElementById('deckListImage');
+const deckListDescription = document.getElementById('deckListDescription');
+const cancelDeckListBtn = document.getElementById('cancelDeckListBtn');
+const confirmDeckListBtn = document.getElementById('confirmDeckListBtn');
+
+const playerStatsModal = document.getElementById('playerStatsModal');
+const playerStatsName = document.getElementById('playerStatsName');
+const playerStatsContent = document.getElementById('playerStatsContent');
+const closePlayerStatsBtn = document.getElementById('closePlayerStatsBtn');
+
+// Initialize authentication
+function initAuth() {
+  authToken = localStorage.getItem('token');
+  currentUser = JSON.parse(localStorage.getItem('user'));
+  
+  if (!authToken || !currentUser) {
+    window.location.href = 'index.html';
+    return;
+  }
+  
+  document.getElementById('usernameDisplay').textContent = currentUser.username;
+  
+  // Show admin panels if user is admin
+  if (currentUser.role === 'admin') {
+    document.getElementById('adminTierPanel').style.display = 'block';
+    document.getElementById('adminTourneyPanel').style.display = 'block';
+  }
+  
+  // Initialize the rest of the application
+  initSettings();
+  initViewControls();
+  initDeckLists();
+  initDeckSimulator();
+  initModals();
+  renderAll();
+}
+
+// API request helper
+async function apiRequest(endpoint, options = {}) {
+  const config = {
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${authToken}`,
+      ...options.headers,
+    },
+    ...options,
+  };
+  
+  // Add body if it exists and method is not GET or HEAD
+  if (options.body && !['GET', 'HEAD'].includes(options.method || 'GET')) {
+    config.body = JSON.stringify(options.body);
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, config);
+    
+    if (response.status === 401) {
+      logout();
+      throw new Error('Authentication failed');
+    }
+    
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Request failed');
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+}
+
+// Logout function
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = 'index.html';
+}
+
+// Initialize the application
+function initModals() {
+  // Modal event listeners
+  cancelDeckBtn.addEventListener('click', hideDeckModal);
+  confirmDeckBtn.addEventListener('click', addDeckFromModal);
+  
+  cancelSessionBtn.addEventListener('click', hideSessionModal);
+  confirmSessionBtn.addEventListener('click', createSessionFromModal);
+  
+  cancelDeckListBtn.addEventListener('click', hideDeckListModal);
+  confirmDeckListBtn.addEventListener('click', addDeckListFromModal);
+  
+  closePlayerStatsBtn.addEventListener('click', () => {
+    playerStatsModal.classList.remove('active');
+  });
+  
+  deckModal.addEventListener('click', function(e) {
+    if (e.target === deckModal) hideDeckModal();
+  });
+  
+  sessionModal.addEventListener('click', function(e) {
+    if (e.target === sessionModal) hideSessionModal();
+  });
+  
+  deckListModal.addEventListener('click', function(e) {
+    if (e.target === deckListModal) hideDeckListModal();
+  });
+  
+  playerStatsModal.addEventListener('click', function(e) {
+    if (e.target === playerStatsModal) playerStatsModal.classList.remove('active');
+  });
+  
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      if (deckModal.classList.contains('active')) hideDeckModal();
+      if (sessionModal.classList.contains('active')) hideSessionModal();
+      if (deckListModal.classList.contains('active')) hideDeckListModal();
+      if (playerStatsModal.classList.contains('active')) playerStatsModal.classList.remove('active');
+    }
+  });
+  
+  deckNameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addDeckFromModal();
+  });
+  
+  sessionNameInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') createSessionFromModal();
+  });
+  
+  deckListName.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') addDeckListFromModal();
+  });
+}
+
+// Load initial data
+async function loadInitialData() {
+  try {
+    const [sessions, leaderboard, tierList, tourneys] = await Promise.all([
+      apiRequest('/sessions'),
+      apiRequest('/leaderboard?formula=rated'),
+      apiRequest('/tier-list'),
+      apiRequest('/tournaments')
+    ]);
+    
+    return { sessions, leaderboard, tierList, tourneys };
+  } catch (error) {
+    console.error('Failed to load initial data:', error);
+    return { sessions: [], leaderboard: [], tierList: [], tourneys: [] };
+  }
+}
+
+// Initialize the rest of the application
+document.addEventListener('DOMContentLoaded', initAuth);
+
+// ========== EXISTING APPLICATION CODE (MODIFIED FOR API) ==========
+
+// All the existing functions from the original app.html, but modified to use apiRequest
+// instead of localStorage. This includes:
+// - Session management
+// - Match management  
+// - Deck management
+// - Chart rendering
+// - Matrix rendering
+// - Prediction system
+// - Comparison system
+// - Analysis system
+// - Simulator system
+
+// Example of modified functions:
+
+// Sessions system
+async function getSessions() {
+  try {
+    return await apiRequest('/sessions');
+  } catch (error) {
+    console.error('Failed to load sessions:', error);
+    return [];
+  }
+}
+
+async function getCurrentSession() {
+  const sessions = await getSessions();
+  const currentSessionId = localStorage.getItem('currentSessionId');
+  return sessions.find(s => s.id === currentSessionId) || sessions[0] || null;
+}
+
+async function saveSession(session) {
+  try {
+    if (session.id) {
+      return await apiRequest(`/sessions/${session.id}`, {
+        method: 'PUT',
+        body: session
+      });
+    } else {
+      return await apiRequest('/sessions', {
+        method: 'POST',
+        body: session
+      });
+    }
+  } catch (error) {
+    console.error('Failed to save session:', error);
+    throw error;
+  }
+}
+
+async function deleteSession(id) {
+  try {
+    await apiRequest(`/sessions/${id}`, { method: 'DELETE' });
+    const sessions = await getSessions();
+    
+    // Update current session if needed
+    const currentSessionId = localStorage.getItem('currentSessionId');
+    if (currentSessionId === id) {
+      const newCurrent = sessions.length > 0 ? sessions[0].id : null;
+      localStorage.setItem('currentSessionId', newCurrent);
+    }
+    
+    return sessions;
+  } catch (error) {
+    console.error('Failed to delete session:', error);
+    throw error;
+  }
+}
+
+// Match management
+async function addMatch(matchData) {
+  const currentSession = await getCurrentSession();
+  if (!currentSession) throw new Error('No session selected');
+  
+  try {
+    const updatedSession = await apiRequest(`/sessions/${currentSession.id}/matches`, {
+      method: 'POST',
+      body: matchData
+    });
+    
+    return updatedSession;
+  } catch (error) {
+    console.error('Failed to add match:', error);
+    throw error;
+  }
+}
+
+// Deck lists system
+async function getDeckLists() {
+  try {
+    return await apiRequest('/decklists');
+  } catch (error) {
+    console.error('Failed to load deck lists:', error);
+    return [];
+  }
+}
+
+async function saveDeckList(deckList) {
+  try {
+    if (deckList.id) {
+      return await apiRequest(`/decklists/${deckList.id}`, {
+        method: 'PUT',
+        body: deckList
+      });
+    } else {
+      return await apiRequest('/decklists', {
+        method: 'POST',
+        body: deckList
+      });
+    }
+  } catch (error) {
+    console.error('Failed to save deck list:', error);
+    throw error;
+  }
+}
+
+async function deleteDeckList(id) {
+  try {
+    await apiRequest(`/decklists/${id}`, { method: 'DELETE' });
+    return await getDeckLists();
+  } catch (error) {
+    console.error('Failed to delete deck list:', error);
+    throw error;
+  }
+}
+
+// ========== NEW FEATURES ==========
+
+// Other Players - Leaderboard
+async function renderLeaderboard(players) {
+  const tbody = document.getElementById('leaderboardBody');
+  tbody.innerHTML = '';
+  
+  if (!players || players.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px">No players found</td></tr>';
+    return;
+  }
+  
+  players.forEach((player, index) => {
+    const tr = document.createElement('tr');
+    if (index < 3) tr.className = `rank-${index + 1}`;
+    
+    tr.innerHTML = `
+      <td>${index + 1}</td>
+      <td>${escapeHtml(player.username)}</td>
+      <td>${player.points}</td>
+      <td>${player.totalMatches || 0}</td>
+      <td>${player.winRate || 0}%</td>
+      <td><button class="view-stats-btn" onclick="viewPlayerStats('${player.id}')">View Stats</button></td>
+    `;
+    
+    tbody.appendChild(tr);
+  });
+}
+
+async function viewPlayerStats(playerId) {
+  try {
+    const playerData = await apiRequest(`/players/${playerId}/stats`);
+    showPlayerStatsModal(playerData);
+  } catch (error) {
+    console.error('Failed to load player stats:', error);
+    alert('Failed to load player statistics');
+  }
+}
+
+function showPlayerStatsModal(playerData) {
+  playerStatsName.textContent = playerData.username;
+  
+  // Create player stats content
+  playerStatsContent.innerHTML = `
+    <div class="cols">
+      <div class="card">
+        <h4>Player Overview</h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));gap:12px;margin-top:15px">
+          <div class="stat-card">
+            <div class="stat-value">${playerData.totalMatches || 0}</div>
+            <div class="stat-label">Total Matches</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${playerData.winRate || 0}%</div>
+            <div class="stat-label">Win Rate</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${playerData.points || 0}</div>
+            <div class="stat-label">Points</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">${playerData.bestStreak || 0}</div>
+            <div class="stat-label">Best Streak</div>
+          </div>
+        </div>
+        
+        <h4 style="margin-top:20px">Deck Performance</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Deck</th>
+              <th>Matches</th>
+              <th>Wins</th>
+              <th>Win Rate</th>
+            </tr>
+          </thead>
+          <tbody id="playerDeckStats">
+            ${playerData.deckStats ? playerData.deckStats.map(deck => `
+              <tr>
+                <td>${escapeHtml(deck.name)}</td>
+                <td>${deck.matches}</td>
+                <td>${deck.wins}</td>
+                <td>${deck.winRate}%</td>
+              </tr>
+            `).join('') : '<tr><td colspan="4">No deck data available</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+      
+      <div class="card sidebar">
+        <h4>Recent Matches</h4>
+        <div style="max-height:400px;overflow-y:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>Deck</th>
+                <th>Opponent</th>
+                <th>Result</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${playerData.recentMatches ? playerData.recentMatches.map(match => `
+                <tr>
+                  <td>${escapeHtml(match.deck)}</td>
+                  <td>${escapeHtml(match.opponent)}</td>
+                  <td>${match.result === 'Win' ? '🏆 Win' : '❌ Loss'}</td>
+                  <td>${new Date(match.date).toLocaleDateString()}</td>
+                </tr>
+              `).join('') : '<tr><td colspan="4">No recent matches</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  playerStatsModal.classList.add('active');
+}
+
+// Tier List functions
+async function renderTierList(items) {
+  const container = document.getElementById('tierListContainer');
+  container.innerHTML = '';
+  
+  if (!items || items.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No tier list items yet</div>';
+    return;
+  }
+  
+  // Sort by score (likes - dislikes)
+  items.sort((a, b) => (b.likes - b.dislikes) - (a.likes - a.dislikes));
+  
+  items.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'tier-item';
+    
+    const score = item.likes - item.dislikes;
+    const userVote = item.userVote || 'none';
+    
+    div.innerHTML = `
+      <img src="${item.imageUrl}" alt="Tier item" class="tier-image" onerror="this.src='https://via.placeholder.com/250x200?text=Image+Error'">
+      <div class="tier-actions">
+        <div class="tier-score">${score >= 0 ? '+' : ''}${score}</div>
+        <div class="action-buttons">
+          <button class="like-btn ${userVote === 'like' ? 'active' : ''}" 
+                  onclick="voteTierItem('${item.id}', 'like')">👍 ${item.likes}</button>
+          <button class="dislike-btn ${userVote === 'dislike' ? 'active' : ''}" 
+                  onclick="voteTierItem('${item.id}', 'dislike')">👎 ${item.dislikes}</button>
+        </div>
+      </div>
+    `;
+    
+    container.appendChild(div);
+  });
+}
+
+async function addTierItem() {
+  const imageUrl = document.getElementById('tierImageUrl').value;
+  const fileInput = document.getElementById('tierImageUpload');
+  
+  let finalImageUrl = imageUrl;
+  
+  // In a real implementation, you would upload the file to a server
+  // For now, we'll just use the URL
+  if (fileInput.files[0]) {
+    alert('File upload would be implemented in a real application');
+    return;
+  }
+  
+  if (!finalImageUrl) {
+    alert('Please provide an image URL');
+    return;
+  }
+  
+  try {
+    await apiRequest('/tier-list', {
+      method: 'POST',
+      body: { imageUrl: finalImageUrl }
+    });
+    
+    // Refresh tier list
+    const tierList = await apiRequest('/tier-list');
+    renderTierList(tierList);
+    
+    // Clear inputs
+    document.getElementById('tierImageUrl').value = '';
+    fileInput.value = '';
+  } catch (error) {
+    console.error('Failed to add tier item:', error);
+    alert('Failed to add item to tier list');
+  }
+}
+
+async function voteTierItem(itemId, vote) {
+  try {
+    await apiRequest(`/tier-list/${itemId}/vote`, {
+      method: 'POST',
+      body: { vote }
+    });
+    
+    // Refresh tier list
+    const tierList = await apiRequest('/tier-list');
+    renderTierList(tierList);
+  } catch (error) {
+    console.error('Failed to vote:', error);
+    alert('Failed to submit vote');
+  }
+}
+
+// Tournament functions
+async function renderTournaments(tournaments) {
+  const container = document.getElementById('tourneyListContainer');
+  container.innerHTML = '';
+  
+  if (!tournaments || tournaments.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">No tournaments scheduled yet</div>';
+    return;
+  }
+  
+  // Sort by date
+  tournaments.sort((a, b) => new Date(a.date) - new Date(b.date));
+  
+  tournaments.forEach(tourney => {
+    const div = document.createElement('div');
+    div.className = 'tourney-item';
+    
+    const tourneyDate = new Date(tourney.date);
+    const now = new Date();
+    const isUpcoming = tourneyDate > now;
+    
+    div.innerHTML = `
+      <div class="tourney-header">
+        <div class="tourney-title">${escapeHtml(tourney.title)}</div>
+        <div class="tourney-date ${isUpcoming ? 'upcoming' : 'past'}">
+          ${tourneyDate.toLocaleDateString()} ${tourneyDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+          ${isUpcoming ? '🟢' : '🔴'}
+        </div>
+      </div>
+      <div class="small">${escapeHtml(tourney.description)}</div>
+      <div class="tourney-links">
+        ${tourney.registerUrl ? `<a href="${tourney.registerUrl}" target="_blank" class="btn-ghost">Register</a>` : ''}
+        ${tourney.discordUrl ? `<a href="${tourney.discordUrl}" target="_blank" class="btn-ghost">Discord</a>` : ''}
+      </div>
+    `;
+    
+    container.appendChild(div);
+  });
+}
+
+async function addTournament() {
+  const title = document.getElementById('tourneyTitle').value;
+  const description = document.getElementById('tourneyDescription').value;
+  const date = document.getElementById('tourneyDate').value;
+  const registerUrl = document.getElementById('tourneyRegisterUrl').value;
+  const discordUrl = document.getElementById('tourneyDiscordUrl').value;
+  
+  if (!title || !date) {
+    alert('Please fill in required fields (title and date)');
+    return;
+  }
+  
+  try {
+    await apiRequest('/tournaments', {
+      method: 'POST',
+      body: {
+        title,
+        description,
+        date: new Date(date).toISOString(),
+        registerUrl,
+        discordUrl
+      }
+    });
+    
+    // Refresh tournaments
+    const tourneys = await apiRequest('/tournaments');
+    renderTournaments(tourneys);
+    
+    // Clear inputs
+    document.getElementById('tourneyTitle').value = '';
+    document.getElementById('tourneyDescription').value = '';
+    document.getElementById('tourneyDate').value = '';
+    document.getElementById('tourneyRegisterUrl').value = '';
+    document.getElementById('tourneyDiscordUrl').value = '';
+  } catch (error) {
+    console.error('Failed to add tournament:', error);
+    alert('Failed to add tournament');
+  }
+}
+
+// Tab switching with data loading
+const tabs = document.querySelectorAll('.tab');
+const panels = document.querySelectorAll('.panel');
+
+tabs.forEach(t => {
+  t.addEventListener('click', async () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const target = t.dataset.tab;
+    
+    panels.forEach(p => {
+      if(p.id === 'panel-' + target) {
+        p.classList.add('show');
+        p.setAttribute('aria-hidden','false');
+        
+        // Load data for specific tabs when they become active
+        if(target === 'stats') {
+          setTimeout(async () => {
+            const cur = await getCurrentSession();
+            if(cur) {
+              updateChart(cur);
+            }
+          }, 100);
+        } else if(target === 'predictions') {
+          updatePredictionDecks();
+        } else if(target === 'comparison') {
+          updateComparisonDecks();
+        } else if(target === 'analysis') {
+          updateAdvancedAnalysis();
+        } else if(target === 'other-players') {
+          // Load leaderboard data
+          const leaderboard = await apiRequest('/leaderboard?formula=rated');
+          renderLeaderboard(leaderboard);
+        } else if(target === 'tier-list') {
+          // Load tier list data
+          const tierList = await apiRequest('/tier-list');
+          renderTierList(tierList);
+        } else if(target === 'tourneys') {
+          // Load tournament data
+          const tourneys = await apiRequest('/tournaments');
+          renderTournaments(tourneys);
+        } else if(target === 'deck-lists') {
+          renderDeckLists();
+        }
+      } else {
+        p.classList.remove('show');
+        p.setAttribute('aria-hidden','true');
+      }
+    });
+    
+    if(target === 'stats' && pointsChart) {
+      setTimeout(() => {
+        if (pointsChart) {
+          pointsChart.resize();
+        }
+      }, 300);
+    }
+  });
+});
+
+// Initialize the rest of the application
+async function renderAll() {
+  try {
+    const data = await loadInitialData();
+    
+    // Initialize with loaded data
+    initializeApp(data.sessions);
+    renderLeaderboard(data.leaderboard);
+    renderTierList(data.tierList);
+    renderTournaments(data.tourneys);
+    
+    // Set up formula switching for leaderboard
+    document.querySelectorAll('[data-formula]').forEach(btn => {
+      btn.addEventListener('click', async function() {
+        document.querySelectorAll('[data-formula]').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        
+        const formula = this.dataset.formula;
+        const leaderboard = await apiRequest(`/leaderboard?formula=${formula}`);
+        renderLeaderboard(leaderboard);
+      });
+    });
+  } catch (error) {
+    console.error('Failed to render application:', error);
+  }
+}
+
+// Utility function
+function escapeHtml(str) { 
+  if (!str) return '';
+  return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); 
+}
+
+// Set up event listeners for the new functions
+document.addEventListener('DOMContentLoaded', function() {
+  // Prediction system
+  const predictBtn = document.getElementById('predictBtn');
+  if (predictBtn) {
+    predictBtn.addEventListener('click', predictMatch);
+  }
+  
+  // Comparison system
+  const compareBtn = document.getElementById('compareBtn');
+  if (compareBtn) {
+    compareBtn.addEventListener('click', compareDecks);
+  }
+  
+  // Session management
+  const createSessionBtn = document.getElementById('createSessionBtn');
+  if (createSessionBtn) {
+    createSessionBtn.addEventListener('click', showSessionModal);
+  }
+  
+  const refreshSessionsBtn = document.getElementById('refreshSessionsBtn');
+  if (refreshSessionsBtn) {
+    refreshSessionsBtn.addEventListener('click', renderSessionList);
+  }
+  
+  // Match submission
+  const addMatchBtn = document.getElementById('addMatchBtn');
+  if (addMatchBtn) {
+    addMatchBtn.addEventListener('click', addMatch);
+  }
+  
+  const clearSessionBtn = document.getElementById('clearSessionBtn');
+  if (clearSessionBtn) {
+    clearSessionBtn.addEventListener('click', async () => {
+      if (confirm('Clear all matches in current session?')) {
+        try {
+          const currentSession = await getCurrentSession();
+          if (currentSession) {
+            const updatedSession = await apiRequest(`/sessions/${currentSession.id}/matches`, {
+              method: 'DELETE'
+            });
+            localStorage.setItem('currentSessionId', updatedSession.id);
+            await renderMatches();
+          }
+        } catch (error) {
+          console.error('Failed to clear session:', error);
+          alert('Failed to clear session matches');
+        }
+      }
+    });
+  }
+  
+  // Session selection
+  const sessionSelect = document.getElementById('sessionSelect');
+  if (sessionSelect) {
+    sessionSelect.addEventListener('change', async (e) => {
+      localStorage.setItem('currentSessionId', e.target.value);
+      await populateDecks();
+      await renderMatches();
+    });
+  }
+  
+  // Open sessions button
+  const openSessionsBtn = document.getElementById('openSessionsBtn');
+  if (openSessionsBtn) {
+    openSessionsBtn.addEventListener('click', () => {
+      document.querySelector('.tab[data-tab="sessions"]').click();
+    });
+  }
+  
+  // Add deck buttons
+  const addDeckBtn = document.getElementById('addDeckBtn');
+  if (addDeckBtn) {
+    addDeckBtn.addEventListener('click', showDeckModal);
+  }
+  
+  const addOppBtn = document.getElementById('addOppBtn');
+  if (addOppBtn) {
+    addOppBtn.addEventListener('click', showDeckModal);
+  }
+});
+
+
+// Initialize the application with data
+async function initializeApp(sessions) {
+  if (!sessions || sessions.length === 0) {
+    // Create default session if none exists
+    await createSession('Default Session');
+  } else {
+    // Set first session as current if none is set
+    const currentSessionId = localStorage.getItem('currentSessionId');
+    if (!currentSessionId && sessions.length > 0) {
+      localStorage.setItem('currentSessionId', sessions[0].id);
+    }
+  }
+  
+  await populateSessionSelect();
+  await populateDecks();
+  await renderMatches();
+}
+
+// Session modal functions
+function showSessionModal() {
+  sessionNameInput.value = '';
+  sessionFormulaSelect.value = 'rated';
+  sessionStartPoints.value = '';
+  
+  // Populate default deck options
+  sessionDefaultDeck.innerHTML = '<option value="">No default deck</option>';
+  
+  // This would need to be populated with actual decks from current session
+  getCurrentSession().then(session => {
+    if (session && session.decks) {
+      session.decks.forEach(deck => {
+        const option = document.createElement('option');
+        option.value = deck;
+        option.textContent = deck;
+        sessionDefaultDeck.appendChild(option);
+      });
+    }
+  }).catch(console.error);
+  
+  sessionModal.classList.add('active');
+  sessionNameInput.focus();
+}
+
+function hideSessionModal() {
+  sessionModal.classList.remove('active');
+}
+
+async function createSessionFromModal() {
+  const name = sessionNameInput.value.trim();
+  if (!name) {
+    alert('Please enter a session name');
+    return;
+  }
+  
+  const formula = sessionFormulaSelect.value;
+  const startPoints = sessionStartPoints.value ? parseInt(sessionStartPoints.value) : null;
+  const defaultDeck = sessionDefaultDeck.value;
+  
+  try {
+    await createSession(name, formula, startPoints, defaultDeck);
+    hideSessionModal();
+    
+    // Refresh the UI
+    await populateSessionSelect();
+    await populateDecks();
+    await renderMatches();
+  } catch (error) {
+    console.error('Failed to create session:', error);
+    alert('Failed to create session: ' + error.message);
+  }
+}
+
+// Deck modal functions
+function showDeckModal() {
+  deckNameInput.value = '';
+  deckModal.classList.add('active');
+  deckNameInput.focus();
+}
+
+function hideDeckModal() {
+  deckModal.classList.remove('active');
+}
+
+async function addDeckFromModal() {
+  const name = deckNameInput.value.trim();
+  if (!name) return;
+  
+  try {
+    const currentSession = await getCurrentSession();
+    if (!currentSession) {
+      alert('Create/select a session first');
+      return;
+    }
+    
+    if (currentSession.decks && currentSession.decks.includes(name)) {
+      alert('Deck already exists');
+      return;
+    }
+    
+    // Add deck to session via API
+    const updatedSession = await apiRequest(`/sessions/${currentSession.id}/decks`, {
+      method: 'POST',
+      body: { deckName: name }
+    });
+    
+    // Update local reference
+    localStorage.setItem('currentSessionId', updatedSession.id);
+    
+    await populateDecks();
+    hideDeckModal();
+  } catch (error) {
+    console.error('Failed to add deck:', error);
+    alert('Failed to add deck: ' + error.message);
+  }
+}
+
+// Deck list modal functions
+function showDeckListModal() {
+  deckListName.value = '';
+  deckListImage.value = '';
+  deckListDescription.value = '';
+  deckListModal.classList.add('active');
+  deckListName.focus();
+}
+
+function hideDeckListModal() {
+  deckListModal.classList.remove('active');
+}
+
+async function addDeckListFromModal() {
+  const name = deckListName.value.trim();
+  if (!name) {
+    alert('Please enter a deck name');
+    return;
+  }
+  
+  try {
+    const deckList = {
+      name: name,
+      image: deckListImage.value.trim() || null,
+      description: deckListDescription.value.trim() || null,
+      createdAt: new Date().toISOString()
+    };
+    
+    await saveDeckList(deckList);
+    await renderDeckLists();
+    hideDeckListModal();
+  } catch (error) {
+    console.error('Failed to add deck list:', error);
+    alert('Failed to add deck list: ' + error.message);
+  }
+}
+
+// Settings functions
+function initSettings() {
+  const themeOptions = document.querySelectorAll('.theme-option');
+  const formulaOptions = document.querySelectorAll('.formula-option');
+  const resetSettingsBtn = document.getElementById('resetSettings');
+  
+  // Load settings
+  const settings = JSON.parse(localStorage.getItem('duelist_settings')) || {
+    theme: 'default',
+    pointsFormula: 'rated'
+  };
+  
+  // Apply settings
+  applySettings(settings);
+  
+  // Theme selection
+  themeOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      const theme = this.dataset.theme;
+      const settings = JSON.parse(localStorage.getItem('duelist_settings')) || {};
+      settings.theme = theme;
+      localStorage.setItem('duelist_settings', JSON.stringify(settings));
+      applySettings(settings);
+    });
+  });
+  
+  // Formula selection
+  formulaOptions.forEach(option => {
+    option.addEventListener('click', function() {
+      const formula = this.dataset.formula;
+      const settings = JSON.parse(localStorage.getItem('duelist_settings')) || {};
+      settings.pointsFormula = formula;
+      localStorage.setItem('duelist_settings', JSON.stringify(settings));
+      applySettings(settings);
+      
+      // Update points info display
+      updatePointsInfo(formula);
+    });
+  });
+  
+  // Reset settings
+  if (resetSettingsBtn) {
+    resetSettingsBtn.addEventListener('click', function() {
+      if (confirm('Reset all settings to default?')) {
+        const defaultSettings = {
+          theme: 'default',
+          pointsFormula: 'rated'
+        };
+        localStorage.setItem('duelist_settings', JSON.stringify(defaultSettings));
+        applySettings(defaultSettings);
+        updatePointsInfo('rated');
+      }
+    });
+  }
+}
+
+function applySettings(settings) {
+  // Apply theme
+  document.documentElement.setAttribute('data-theme', settings.theme);
+  
+  // Update active options
+  document.querySelectorAll('.theme-option').forEach(option => {
+    if (option.dataset.theme === settings.theme) {
+      option.classList.add('active');
+    } else {
+      option.classList.remove('active');
+    }
+  });
+  
+  document.querySelectorAll('.formula-option').forEach(option => {
+    if (option.dataset.formula === settings.pointsFormula) {
+      option.classList.add('active');
+    } else {
+      option.classList.remove('active');
+    }
+  });
+  
+  // Update points info
+  updatePointsInfo(settings.pointsFormula);
+}
+
+function updatePointsInfo(formula) {
+  const pointsInfo = document.getElementById('pointsInfo');
+  if (formula === 'rated') {
+    pointsInfo.innerHTML = 'Start: <strong>1500</strong> • Win: <strong>+7</strong> • Loss: <strong>-7</strong>';
+  } else {
+    pointsInfo.innerHTML = 'Start: <strong>0k</strong> • Win: <strong>+1k</strong> • Loss: <strong>-1k</strong> (or -0.5k if below 15k)';
+  }
+}
+
+// View controls
+function initViewControls() {
+  // Matrix view controls
+  const matrixViewButtons = document.querySelectorAll('[data-matrix-view]');
+  matrixViewButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      matrixViewButtons.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      getCurrentSession().then(session => {
+        if (session) renderMatrix(session);
+      }).catch(console.error);
+    });
+  });
+  
+  // Meta view controls
+  const metaViewButtons = document.querySelectorAll('[data-meta-view]');
+  metaViewButtons.forEach(btn => {
+    btn.addEventListener('click', function() {
+      metaViewButtons.forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      
+      if (this.dataset.metaView === 'circle') {
+        document.getElementById('circleSelector').style.display = 'block';
+      } else {
+        document.getElementById('circleSelector').style.display = 'none';
+      }
+      
+      getCurrentSession().then(session => {
+        if (session) renderMeta(session);
+      }).catch(console.error);
+    });
+  });
+  
+  // Circle selector
+  const circleSelect = document.getElementById('circleSelect');
+  if (circleSelect) {
+    circleSelect.addEventListener('change', function() {
+      getCurrentSession().then(session => {
+        if (session) renderMeta(session);
+      }).catch(console.error);
+    });
+  }
+}
+
+// Deck lists system
+function initDeckLists() {
+  renderDeckLists();
+  
+  const addDeckListBtn = document.getElementById('addDeckListBtn');
+  if (addDeckListBtn) {
+    addDeckListBtn.addEventListener('click', showDeckListModal);
+  }
+}
+
+async function renderDeckLists() {
+  try {
+    const deckLists = await getDeckLists();
+    const deckListsContainer = document.getElementById('deckListsContainer');
+    const bestDecksContainer = document.getElementById('bestDecksContainer');
+    
+    deckListsContainer.innerHTML = '';
+    bestDecksContainer.innerHTML = '';
+    
+    if (deckLists.length === 0) {
+      deckListsContainer.innerHTML = `
+        <div class="card" style="text-align:center;padding:40px;grid-column:1/-1">
+          <div style="font-size:18px;color:var(--muted);margin-bottom:8px">No deck lists found</div>
+          <div class="small">Create your first deck list!</div>
+        </div>
+      `;
+      return;
+    }
+    
+    // Calculate best decks (top 3 by win rate)
+    const bestDecks = deckLists
+      .filter(deck => deck.stats && deck.stats.matches > 0)
+      .sort((a, b) => {
+        const aWR = parseFloat(a.stats.overallWR) || 0;
+        const bWR = parseFloat(b.stats.overallWR) || 0;
+        return bWR - aWR;
+      })
+      .slice(0, 3);
+    
+    // Render best decks
+    if (bestDecks.length > 0) {
+      bestDecks.forEach((deck, index) => {
+        const deckCard = document.createElement('div');
+        deckCard.className = 'best-deck-card';
+        
+        let rankColor = '';
+        if (index === 0) rankColor = 'var(--warn)';
+        else if (index === 1) rankColor = 'var(--muted)';
+        else if (index === 2) rankColor = '#cd7f32';
+        
+        deckCard.innerHTML = `
+          <div class="best-deck-name">${escapeHtml(deck.name)}</div>
+          <div class="best-deck-wr" style="color:${rankColor}">${deck.stats.overallWR}</div>
+          <div class="best-deck-matches">${deck.stats.matches} matches</div>
+        `;
+        bestDecksContainer.appendChild(deckCard);
+      });
+    } else {
+      bestDecksContainer.innerHTML = `
+        <div class="card" style="text-align:center;padding:20px;grid-column:1/-1">
+          <div class="small">Play matches with your decks to see performance stats</div>
+        </div>
+      `;
+    }
+    
+    // Render all deck lists
+    deckLists.forEach(deckList => {
+      const deckCard = document.createElement('div');
+      deckCard.className = 'deck-list-card';
+      
+      deckCard.innerHTML = `
+        <div class="deck-list-header">
+          <div style="font-weight:700">${escapeHtml(deckList.name)}</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div class="small">${new Date(deckList.createdAt).toLocaleDateString()}</div>
+            <button class="delete-btn" data-deck-id="${deckList.id}" title="Delete deck list">🗑️</button>
+          </div>
+        </div>
+        
+        ${deckList.image ? 
+          `<div class="deck-list-image">
+            <img src="${deckList.image}" alt="${deckList.name}" style="width:100%;border-radius:8px">
+          </div>` : 
+          `<div class="deck-list-image">
+            <div class="small">No image</div>
+          </div>`
+        }
+        
+        ${deckList.description ? 
+          `<div style="margin-bottom:12px;font-size:14px">${escapeHtml(deckList.description)}</div>` : 
+          ''
+        }
+        
+        <div class="deck-list-stats">
+          <div class="deck-list-stat">
+            <div class="deck-list-stat-value">${deckList.stats?.overallWR || '0%'}</div>
+            <div class="deck-list-stat-label">Overall WR</div>
+          </div>
+          <div class="deck-list-stat">
+            <div class="deck-list-stat-value">${deckList.stats?.wrGoing1st || '0%'}</div>
+            <div class="deck-list-stat-label">WR Going 1st</div>
+          </div>
+          <div class="deck-list-stat">
+            <div class="deck-list-stat-value">${deckList.stats?.wrGoing2nd || '0%'}</div>
+            <div class="deck-list-stat-label">WR Going 2nd</div>
+          </div>
+          <div class="deck-list-stat">
+            <div class="deck-list-stat-value">${deckList.stats?.matches || 0}</div>
+            <div class="deck-list-stat-label">Matches</div>
+          </div>
+        </div>
+      `;
+      
+      // Add delete event listener
+      const deleteBtn = deckCard.querySelector('.delete-btn');
+      deleteBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to delete this deck list?')) {
+          try {
+            await deleteDeckList(deckList.id);
+            await renderDeckLists();
+          } catch (error) {
+            console.error('Failed to delete deck list:', error);
+            alert('Failed to delete deck list');
+          }
+        }
+      });
+      
+      deckListsContainer.appendChild(deckCard);
+    });
+  } catch (error) {
+    console.error('Failed to render deck lists:', error);
+  }
+}
+
+// Prediction system functions
+function updatePredictionDecks() {
+  getCurrentSession().then(session => {
+    if (!session) return;
+    
+    const predDeckSelect = document.getElementById('predDeckSelect');
+    const predOppSelect = document.getElementById('predOppSelect');
+    
+    predDeckSelect.innerHTML = '';
+    predOppSelect.innerHTML = '';
+    
+    const decks = session.decks || defaultDecks;
+    decks.forEach(deck => {
+      const option1 = document.createElement('option');
+      option1.value = deck;
+      option1.textContent = deck;
+      predDeckSelect.appendChild(option1);
+      
+      const option2 = document.createElement('option');
+      option2.value = deck;
+      option2.textContent = deck;
+      predOppSelect.appendChild(option2);
+    });
+    
+    updateRecommendedDecks(session);
+  }).catch(console.error);
+}
+
+async function predictMatch() {
+  try {
+    const currentSession = await getCurrentSession();
+    if (!currentSession) {
+      alert('Please select a session first');
+      return;
+    }
+    
+    const yourDeck = document.getElementById('predDeckSelect').value;
+    const oppDeck = document.getElementById('predOppSelect').value;
+    const turnOrder = document.getElementById('predTurnOrder').value;
+    
+    if (!yourDeck || !oppDeck) {
+      alert('Please select both decks');
+      return;
+    }
+    
+    const prediction = calculatePrediction(currentSession, yourDeck, oppDeck, turnOrder);
+    
+    document.getElementById('winProbability').textContent = `${prediction.winProbability}%`;
+    document.getElementById('confidenceFill').style.width = `${prediction.confidence}%`;
+    document.getElementById('confidenceValue').textContent = `${prediction.confidence}% Confidence`;
+    document.getElementById('overallWR').textContent = `${prediction.overallWR}%`;
+    document.getElementById('turnWR').textContent = `${prediction.turnWR}%`;
+    document.getElementById('matchupWR').textContent = `${prediction.matchupWR}%`;
+    document.getElementById('recentWR').textContent = `${prediction.recentWR}%`;
+    document.getElementById('predictionInsight').textContent = prediction.insight;
+    
+    document.getElementById('predictionResult').style.display = 'block';
+  } catch (error) {
+    console.error('Prediction failed:', error);
+    alert('Prediction failed: ' + error.message);
+  }
+}
+
+function calculatePrediction(session, yourDeck, oppDeck, turnOrder) {
+  const matches = session.matches || [];
+  
+  // Overall win rate with the deck
+  const overallMatches = matches.filter(m => m.deck === yourDeck);
+  const overallWins = overallMatches.filter(m => m.result === 'Win').length;
+  const overallWR = overallMatches.length > 0 ? Math.round(overallWins / overallMatches.length * 100) : 50;
+  
+  // Win rate with specific turn order
+  const turnMatches = matches.filter(m => m.deck === yourDeck && m.turn === turnOrder);
+  const turnWins = turnMatches.filter(m => m.result === 'Win').length;
+  const turnWR = turnMatches.length > 0 ? Math.round(turnWins / turnMatches.length * 100) : 50;
+  
+  // Matchup-specific win rate
+  const matchupMatches = matches.filter(m => m.deck === yourDeck && m.opp === oppDeck);
+  const matchupWins = matchupMatches.filter(m => m.result === 'Win').length;
+  const matchupWR = matchupMatches.length > 0 ? Math.round(matchupWins / matchupMatches.length * 100) : 50;
+  
+  // Recent performance (last 10 matches)
+  const recentMatches = matches.filter(m => m.deck === yourDeck).slice(-10);
+  const recentWins = recentMatches.filter(m => m.result === 'Win').length;
+  const recentWR = recentMatches.length > 0 ? Math.round(recentWins / recentMatches.length * 100) : 50;
+  
+  // Weighted average for final prediction
+  const winProbability = Math.round(
+    (overallWR * 0.3) + (turnWR * 0.2) + (matchupWR * 0.3) + (recentWR * 0.2)
+  );
+  
+  // Confidence calculation based on data availability
+  let confidence = 0;
+  if (overallMatches.length >= 5) confidence += 30;
+  if (turnMatches.length >= 3) confidence += 20;
+  if (matchupMatches.length >= 2) confidence += 30;
+  if (recentMatches.length >= 3) confidence += 20;
+  
+  // Generate insight
+  let insight = "Based on your historical performance, ";
+  if (winProbability >= 70) {
+    insight += "you have a strong advantage in this matchup. Consider playing aggressively.";
+  } else if (winProbability >= 55) {
+    insight += "you have a slight advantage. Focus on your game plan and avoid risky plays.";
+  } else if (winProbability >= 45) {
+    insight += "this is a fairly even matchup. The outcome will likely depend on skill and luck.";
+  } else {
+    insight += "you're at a disadvantage. Consider a different deck or focus on countering their strategy.";
+  }
+  
+  if (turnOrder === '1st' && turnWR > 55) {
+    insight += " Your performance going first is particularly strong.";
+  } else if (turnOrder === '2nd' && turnWR > 55) {
+    insight += " Your performance going second is particularly strong.";
+  }
+  
+  return {
+    winProbability,
+    confidence,
+    overallWR,
+    turnWR,
+    matchupWR,
+    recentWR,
+    insight
+  };
+}
+
+
+
+function updateRecommendedDecks(session) {
+  const matches = session.matches || [];
+  const decks = session.decks || defaultDecks;
+  const recommendedDecks = document.getElementById('recommendedDecks');
+  
+  const deckScores = decks.map(deck => {
+    const deckMatches = matches.filter(m => m.deck === deck);
+    const wins = deckMatches.filter(m => m.result === 'Win').length;
+    const winRate = deckMatches.length > 0 ? (wins / deckMatches.length) * 100 : 50;
+    
+    // Simple scoring based on win rate and match count
+    const score = winRate + (deckMatches.length * 0.1);
+    
+    return {
+      deck,
+      winRate: Math.round(winRate),
+      matches: deckMatches.length,
+      score: Math.round(score)
+    };
+  });
+  
+  // Sort by score and take top 5
+  deckScores.sort((a, b) => b.score - a.score);
+  const topDecks = deckScores.slice(0, 5);
+  
+  recommendedDecks.innerHTML = '';
+  topDecks.forEach(deck => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(deck.deck)}</td>
+      <td>${deck.winRate}%</td>
+      <td>${Math.min(100, Math.round(deck.matches * 5))}%</td>
+      <td>${deck.score}</td>
+    `;
+    recommendedDecks.appendChild(tr);
+  });
+}
+
+// Comparison system
+function updateComparisonDecks() {
+  getCurrentSession().then(session => {
+    if (!session) return;
+    
+    const compareDeck1 = document.getElementById('compareDeck1');
+    const compareDeck2 = document.getElementById('compareDeck2');
+    
+    compareDeck1.innerHTML = '';
+    compareDeck2.innerHTML = '';
+    
+    const decks = session.decks || defaultDecks;
+    decks.forEach(deck => {
+      const option1 = document.createElement('option');
+      option1.value = deck;
+      option1.textContent = deck;
+      compareDeck1.appendChild(option1);
+      
+      const option2 = document.createElement('option');
+      option2.value = deck;
+      option2.textContent = deck;
+      compareDeck2.appendChild(option2);
+    });
+  }).catch(console.error);
+}
+
+async function compareDecks() {
+  try {
+    const deck1 = document.getElementById('compareDeck1').value;
+    const deck2 = document.getElementById('compareDeck2').value;
+    
+    if (!deck1 || !deck2) {
+      alert('Please select two decks to compare');
+      return;
+    }
+    
+    if (deck1 === deck2) {
+      alert('Please select two different decks');
+      return;
+    }
+    
+    const currentSession = await getCurrentSession();
+    if (!currentSession) {
+      alert('No session selected');
+      return;
+    }
+    
+    const deck1Stats = calculateDeckStats(currentSession, deck1);
+    const deck2Stats = calculateDeckStats(currentSession, deck2);
+    
+    // Update UI with comparison results
+    document.getElementById('deck1Name').textContent = deck1;
+    document.getElementById('deck2Name').textContent = deck2;
+    
+    document.getElementById('deck1WR').textContent = deck1Stats.winRate + '%';
+    document.getElementById('deck2WR').textContent = deck2Stats.winRate + '%';
+    
+    document.getElementById('deck1Matches').textContent = deck1Stats.totalMatches;
+    document.getElementById('deck2Matches').textContent = deck2Stats.totalMatches;
+    
+    document.getElementById('deck1Streak').textContent = deck1Stats.bestStreak;
+    document.getElementById('deck2Streak').textContent = deck2Stats.bestStreak;
+    
+    document.getElementById('deck1Turn1WR').textContent = deck1Stats.turn1WR + '%';
+    document.getElementById('deck1Turn2WR').textContent = deck1Stats.turn2WR + '%';
+    document.getElementById('deck2Turn1WR').textContent = deck2Stats.turn1WR + '%';
+    document.getElementById('deck2Turn2WR').textContent = deck2Stats.turn2WR + '%';
+    
+    // Generate analysis
+    let analysis = '';
+    if (deck1Stats.winRate > deck2Stats.winRate) {
+      analysis += `<strong>${deck1}</strong> has a higher overall win rate (${deck1Stats.winRate}% vs ${deck2Stats.winRate}%). `;
+    } else if (deck2Stats.winRate > deck1Stats.winRate) {
+      analysis += `<strong>${deck2}</strong> has a higher overall win rate (${deck2Stats.winRate}% vs ${deck1Stats.winRate}%). `;
+    } else {
+      analysis += `Both decks have the same overall win rate (${deck1Stats.winRate}%). `;
+    }
+    
+    if (deck1Stats.turn1WR > deck2Stats.turn1WR) {
+      analysis += `<strong>${deck1}</strong> performs better when going first. `;
+    } else if (deck2Stats.turn1WR > deck1Stats.turn1WR) {
+      analysis += `<strong>${deck2}</strong> performs better when going first. `;
+    }
+    
+    if (deck1Stats.turn2WR > deck2Stats.turn2WR) {
+      analysis += `<strong>${deck1}</strong> performs better when going second. `;
+    } else if (deck2Stats.turn2WR > deck1Stats.turn2WR) {
+      analysis += `<strong>${deck2}</strong> performs better when going second. `;
+    }
+    
+    if (deck1Stats.bestStreak > deck2Stats.bestStreak) {
+      analysis += `<strong>${deck1}</strong> has a longer win streak (${deck1Stats.bestStreak} vs ${deck2Stats.bestStreak}). `;
+    } else if (deck2Stats.bestStreak > deck1Stats.bestStreak) {
+      analysis += `<strong>${deck2}</strong> has a longer win streak (${deck2Stats.bestStreak} vs ${deck1Stats.bestStreak}). `;
+    }
+    
+    if (deck1Stats.totalMatches > deck2Stats.totalMatches) {
+      analysis += `You have more experience with <strong>${deck1}</strong> (${deck1Stats.totalMatches} vs ${deck2Stats.totalMatches} matches).`;
+    } else if (deck2Stats.totalMatches > deck1Stats.totalMatches) {
+      analysis += `You have more experience with <strong>${deck2}</strong> (${deck2Stats.totalMatches} vs ${deck1Stats.totalMatches} matches).`;
+    }
+    
+    document.getElementById('h2hAnalysis').innerHTML = analysis;
+    document.getElementById('comparisonResult').style.display = 'block';
+  } catch (error) {
+    console.error('Deck comparison failed:', error);
+    alert('Deck comparison failed: ' + error.message);
+  }
+}
+
+function calculateDeckStats(session, deck) {
+  const matches = session.matches || [];
+  const deckMatches = matches.filter(m => m.deck === deck);
+  const wins = deckMatches.filter(m => m.result === 'Win').length;
+  const totalMatches = deckMatches.length;
+  const winRate = totalMatches > 0 ? Math.round(wins / totalMatches * 100) : 0;
+  
+  // Calculate best streak
+  let currentStreak = 0;
+  let bestStreak = 0;
+  let currentDeckMatches = matches.filter(m => m.deck === deck);
+  
+  currentDeckMatches.forEach(match => {
+    if (match.result === 'Win') {
+      currentStreak++;
+      bestStreak = Math.max(bestStreak, currentStreak);
+    } else {
+      currentStreak = 0;
+    }
+  });
+  
+  // Turn-specific win rates
+  const turn1Matches = deckMatches.filter(m => m.turn === '1st');
+  const turn1Wins = turn1Matches.filter(m => m.result === 'Win').length;
+  const turn1WR = turn1Matches.length > 0 ? Math.round(turn1Wins / turn1Matches.length * 100) : 0;
+  
+  const turn2Matches = deckMatches.filter(m => m.turn === '2nd');
+  const turn2Wins = turn2Matches.filter(m => m.result === 'Win').length;
+  const turn2WR = turn2Matches.length > 0 ? Math.round(turn2Wins / turn2Matches.length * 100) : 0;
+  
+  return {
+    winRate,
+    totalMatches,
+    bestStreak,
+    turn1WR,
+    turn2WR
+  };
+}
+
+// Advanced Analysis
+async function updateAdvancedAnalysis() {
+  try {
+    const currentSession = await getCurrentSession();
+    if (!currentSession) return;
+    
+    const matches = currentSession.matches || [];
+    
+    if (matches.length === 0) {
+      document.getElementById('strategicInsights').innerHTML = '<p>Not enough data for advanced analysis. Play more matches to unlock insights.</p>';
+      document.getElementById('avgWinRate').textContent = '0%';
+      document.getElementById('consistencyScore').textContent = '0';
+      document.getElementById('improvementRate').textContent = '0%';
+      document.getElementById('metaAdaptation').textContent = '0%';
+      return;
+    }
+    
+    // Calculate basic stats
+    const wins = matches.filter(m => m.result === 'Win').length;
+    const total = matches.length;
+    const avgWinRateValue = Math.round(wins / total * 100);
+    
+    // Improvement rate (compare first half vs second half)
+    const firstHalf = matches.slice(0, Math.floor(total / 2));
+    const secondHalf = matches.slice(Math.floor(total / 2));
+    
+    const firstHalfWins = firstHalf.filter(m => m.result === 'Win').length;
+    const secondHalfWins = secondHalf.filter(m => m.result === 'Win').length;
+    
+    const firstHalfWR = firstHalf.length > 0 ? Math.round(firstHalfWins / firstHalf.length * 100) : 0;
+    const secondHalfWR = secondHalf.length > 0 ? Math.round(secondHalfWins / secondHalf.length * 100) : 0;
+    
+    const improvementRateValue = secondHalfWR - firstHalfWR;
+    
+    // Consistency score (based on win rate variance across decks)
+    const decks = currentSession.decks || defaultDecks;
+    const winRatesByDeck = [];
+    
+    decks.forEach(deck => {
+      const deckMatches = matches.filter(m => m.deck === deck);
+      if (deckMatches.length > 0) {
+        const deckWins = deckMatches.filter(m => m.result === 'Win').length;
+        const deckWR = Math.round(deckWins / deckMatches.length * 100);
+        winRatesByDeck.push(deckWR);
+      }
+    });
+    
+    const avgDeckWR = winRatesByDeck.length > 0 ? 
+      winRatesByDeck.reduce((a, b) => a + b, 0) / winRatesByDeck.length : 0;
+    
+    const variance = winRatesByDeck.length > 0 ? 
+      winRatesByDeck.reduce((a, b) => a + Math.pow(b - avgDeckWR, 2), 0) / winRatesByDeck.length : 0;
+    
+    const consistencyScoreValue = Math.max(0, 100 - Math.round(Math.sqrt(variance) * 2));
+    
+    // Meta adaptation (based on recent performance)
+    const recentMatches = matches.slice(-10);
+    const recentWins = recentMatches.filter(m => m.result === 'Win').length;
+    const recentWR = recentMatches.length > 0 ? Math.round(recentWins / recentMatches.length * 100) : 0;
+    const metaAdaptationValue = Math.min(100, Math.max(0, recentWR + 20));
+    
+    // Update UI
+    document.getElementById('avgWinRate').textContent = `${avgWinRateValue}%`;
+    document.getElementById('consistencyScore').textContent = consistencyScoreValue;
+    document.getElementById('improvementRate').textContent = `${improvementRateValue > 0 ? '+' : ''}${improvementRateValue}%`;
+    document.getElementById('metaAdaptation').textContent = `${metaAdaptationValue}%`;
+    
+    // Time analysis
+    updateTimeAnalysis(matches);
+    
+    // Session analysis
+    updateSessionAnalysis(matches);
+    
+    // Strategic insights
+    updateStrategicInsights(currentSession, matches, {
+      avgWinRateValue,
+      improvementRateValue,
+      consistencyScoreValue,
+      metaAdaptationValue
+    });
+    
+    // Update trend chart
+    updateTrendChart(currentSession);
+  } catch (error) {
+    console.error('Advanced analysis failed:', error);
+  }
+}
+
+function updateTimeAnalysis(matches) {
+  const timeAnalysis = document.getElementById('timeAnalysis');
+  timeAnalysis.innerHTML = '';
+  
+  const timePeriods = [
+    { name: 'Morning', start: 6, end: 12 },
+    { name: 'Afternoon', start: 12, end: 18 },
+    { name: 'Evening', start: 18, end: 24 },
+    { name: 'Night', start: 0, end: 6 }
+  ];
+  
+  timePeriods.forEach(period => {
+    const periodMatches = matches.filter(m => {
+      const hour = new Date(m.createdAt).getHours();
+      return (hour >= period.start && hour < period.end) || 
+             (period.start > period.end && (hour >= period.start || hour < period.end));
+    });
+    
+    const periodWins = periodMatches.filter(m => m.result === 'Win').length;
+    const periodWR = periodMatches.length > 0 ? Math.round(periodWins / periodMatches.length * 100) : 0;
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${period.name}</td>
+      <td>${periodMatches.length}</td>
+      <td>${periodWR}%</td>
+    `;
+    timeAnalysis.appendChild(tr);
+  });
+}
+
+function updateSessionAnalysis(matches) {
+  const sessionAnalysis = document.getElementById('sessionAnalysis');
+  sessionAnalysis.innerHTML = '';
+  
+  // This is a simplified version - in a real app, you'd track actual sessions
+  const sessionLengths = [
+    { range: '1-5', min: 1, max: 5 },
+    { range: '6-10', min: 6, max: 10 },
+    { range: '11-15', min: 11, max: 15 },
+    { range: '16+', min: 16, max: 1000 }
+  ];
+  
+  // Mock data for demonstration
+  sessionLengths.forEach(session => {
+    const frequency = Math.floor(Math.random() * 10) + 1;
+    const winRate = Math.floor(Math.random() * 40) + 30;
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${session.range}</td>
+      <td>${winRate}%</td>
+      <td>${frequency}</td>
+    `;
+    sessionAnalysis.appendChild(tr);
+  });
+}
+
+function updateStrategicInsights(session, matches, stats) {
+  const strategicInsights = document.getElementById('strategicInsights');
+  let insights = '';
+  
+  if (stats.improvementRateValue > 5) {
+    insights += `<p>📈 <strong>You're improving!</strong> Your win rate has increased by ${stats.improvementRateValue}% in recent matches. Keep up the good work!</p>`;
+  } else if (stats.improvementRateValue < -5) {
+    insights += `<p>📉 <strong>Your performance has declined</strong> by ${Math.abs(stats.improvementRateValue)}%. Consider reviewing your recent matches to identify areas for improvement.</p>`;
+  }
+  
+  if (stats.consistencyScoreValue > 80) {
+    insights += `<p>🎯 <strong>You're very consistent!</strong> Your performance doesn't vary much between different decks.</p>`;
+  } else if (stats.consistencyScoreValue < 60) {
+    insights += `<p>🔄 <strong>Your performance varies significantly</strong> between different decks. Consider focusing on your best-performing decks.</p>`;
+  }
+  
+  // Find best time of day
+  const timePeriods = [
+    { name: 'Morning', start: 6, end: 12 },
+    { name: 'Afternoon', start: 12, end: 18 },
+    { name: 'Evening', start: 18, end: 24 },
+    { name: 'Night', start: 0, end: 6 }
+  ];
+  
+  let bestTime = '';
+  let bestWR = 0;
+  
+  timePeriods.forEach(period => {
+    const periodMatches = matches.filter(m => {
+      const hour = new Date(m.createdAt).getHours();
+      return (hour >= period.start && hour < period.end) || 
+             (period.start > period.end && (hour >= period.start || hour < period.end));
+    });
+    
+    if (periodMatches.length > 0) {
+      const periodWins = periodMatches.filter(m => m.result === 'Win').length;
+      const periodWR = Math.round(periodWins / periodMatches.length * 100);
+      
+      if (periodWR > bestWR) {
+        bestWR = periodWR;
+        bestTime = period.name;
+      }
+    }
+  });
+  
+  if (bestTime) {
+    insights += `<p>⏰ <strong>You perform best during ${bestTime}</strong> with a ${bestWR}% win rate. Consider scheduling your play sessions during this time.</p>`;
+  }
+  
+  strategicInsights.innerHTML = insights || '<p>Play more matches to unlock strategic insights.</p>';
+}
+
+function updateTrendChart(session) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  
+  // Destroy existing chart
+  if (trendChart) {
+    trendChart.destroy();
+    trendChart = null;
+  }
+  
+  const matches = session.matches || [];
+  if (matches.length === 0) return;
+  
+  // Calculate moving average of win rate
+  const movingAverages = [];
+  for (let i = 0; i < matches.length; i++) {
+    const start = Math.max(0, i - 9); // 10-match window
+    const recentMatches = matches.slice(start, i + 1);
+    const wins = recentMatches.filter(m => m.result === 'Win').length;
+    const wr = recentMatches.length > 0 ? (wins / recentMatches.length) * 100 : 0;
+    movingAverages.push(Math.round(wr));
+  }
+  
+  const labels = matches.map((_, i) => i + 1);
+  
+  trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Win Rate (10-match avg)',
+        data: movingAverages,
+        borderColor: 'rgba(51, 194, 255, 0.95)',
+        backgroundColor: 'rgba(51, 194, 255, 0.1)',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 2,
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        }
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Match #',
+            color: 'var(--muted)'
+          },
+          grid: {
+            color: 'rgba(255,255,255,0.05)'
+          },
+          ticks: {
+            color: 'var(--muted)'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Win Rate %',
+            color: 'var(--muted)'
+          },
+          min: 0,
+          max: 100,
+          grid: {
+            color: 'rgba(255,255,255,0.05)'
+          },
+          ticks: {
+            color: 'var(--muted)'
+          }
+        }
+      }
+    }
+  });
+}
+// extra Functions
+async function populateSessionSelect() {
+    try {
+        const sessions = await getSessions();
+        const sessionSelect = document.getElementById('sessionSelect');
+        
+        sessionSelect.innerHTML = '';
+        
+        sessions.forEach(session => {
+            const option = document.createElement('option');
+            option.value = session.id;
+            option.textContent = `${session.name} (${session.matches ? session.matches.length : 0})`;
+            sessionSelect.appendChild(option);
+        });
+        
+        const currentSessionId = localStorage.getItem('currentSessionId');
+        if (currentSessionId && sessions.find(s => s.id === currentSessionId)) {
+            sessionSelect.value = currentSessionId;
+        } else if (sessions.length > 0) {
+            sessionSelect.selectedIndex = 0;
+            localStorage.setItem('currentSessionId', sessions[0].id);
+        }
+    } catch (error) {
+        console.error('Failed to populate session select:', error);
+    }
+}
+
+async function populateDecks() {
+    try {
+        const currentSession = await getCurrentSession();
+        const deckSelect = document.getElementById('deckSelect');
+        const oppSelect = document.getElementById('oppSelect');
+        
+        deckSelect.innerHTML = '';
+        oppSelect.innerHTML = '';
+        
+        const decks = currentSession?.decks || defaultDecks;
+        
+        decks.forEach(deck => {
+            const option1 = document.createElement('option');
+            option1.value = deck;
+            option1.textContent = deck;
+            deckSelect.appendChild(option1);
+            
+            const option2 = document.createElement('option');
+            option2.value = deck;
+            option2.textContent = deck;
+            oppSelect.appendChild(option2);
+        });
+        
+        // Set default deck if specified
+        if (currentSession?.defaultDeck && decks.includes(currentSession.defaultDeck)) {
+            deckSelect.value = currentSession.defaultDeck;
+        }
+    } catch (error) {
+        console.error('Failed to populate decks:', error);
+    }
+}
+
+async function renderMatches() {
+    try {
+        const matchesTbody = document.querySelector('#matchesTable tbody');
+        const summaryLine = document.getElementById('summaryLine');
+        
+        matchesTbody.innerHTML = '';
+        
+        const currentSession = await getCurrentSession();
+        if (!currentSession) {
+            summaryLine.textContent = 'No session selected';
+            return;
+        }
+        
+        const matches = currentSession.matches || [];
+        const settings = JSON.parse(localStorage.getItem('duelist_settings')) || {};
+        const isDCFormula = settings.pointsFormula === 'dc';
+        
+        // Render matches table
+        matches.forEach((match, index) => {
+            const tr = document.createElement('tr');
+            const resultText = match.result === 'Win' ? '🏆 Win' : '❌ Loss';
+            
+            const formatPoints = (pts) => isDCFormula ? `${pts}k` : pts;
+            
+            tr.innerHTML = `
+                <td>${escapeHtml(match.deck)}</td>
+                <td>${escapeHtml(match.opp)}</td>
+                <td>${resultText}</td>
+                <td>${escapeHtml(match.turn || '')}</td>
+                <td>${formatPoints(match.pointsBefore)}</td>
+                <td>${formatPoints(match.pointsAfter)}</td>
+            `;
+            matchesTbody.appendChild(tr);
+        });
+        
+        // Update summary line
+        const total = matches.length;
+        const wins = matches.filter(m => m.result === 'Win').length;
+        const currentPoints = total > 0 ? matches[matches.length - 1].pointsAfter : 
+                              (isDCFormula ? 0 : 1500);
+        const winRate = total > 0 ? Math.round(wins / total * 1000) / 10 : 0;
+        
+        const formatPoints = (pts) => isDCFormula ? `${pts}k` : pts;
+        
+        summaryLine.textContent = `Matches: ${total} • Points: ${formatPoints(currentPoints)} • Winrate: ${winRate}%`;
+        
+        // Update other components
+        await renderDeckPerf(currentSession);
+        await renderMatrix(currentSession);
+        await renderMeta(currentSession);
+        updateChart(currentSession);
+        
+    } catch (error) {
+        console.error('Failed to render matches:', error);
+    }
+}
+
+async function renderDeckPerf(session) {
+    try {
+        const deckPerfTableBody = document.querySelector('#deckPerfTable tbody');
+        deckPerfTableBody.innerHTML = '';
+        
+        const decks = session.decks || defaultDecks;
+        const matches = session.matches || [];
+        
+        decks.forEach(deck => {
+            const deckMatches = matches.filter(m => m.deck === deck);
+            const wins = deckMatches.filter(m => m.result === 'Win').length;
+            
+            const matches1st = deckMatches.filter(m => m.turn === '1st');
+            const wins1st = matches1st.filter(m => m.result === 'Win').length;
+            
+            const matches2nd = deckMatches.filter(m => m.turn === '2nd');
+            const wins2nd = matches2nd.filter(m => m.result === 'Win').length;
+            
+            const overallWR = deckMatches.length > 0 ? (Math.round(wins / deckMatches.length * 1000) / 10) : 0;
+            const wr1st = matches1st.length > 0 ? (Math.round(wins1st / matches1st.length * 1000) / 10) : 0;
+            const wr2nd = matches2nd.length > 0 ? (Math.round(wins2nd / matches2nd.length * 1000) / 10) : 0;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(deck)}</td>
+                <td>${deckMatches.length}</td>
+                <td>${wins}</td>
+                <td>${overallWR}%</td>
+                <td>${wr1st}%</td>
+                <td>${wr2nd}%</td>
+            `;
+            deckPerfTableBody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error('Failed to render deck performance:', error);
+    }
+}
+
+async function renderMatrix(session) {
+    try {
+        const matrixContainer = document.getElementById('matrixContainer');
+        matrixContainer.innerHTML = '';
+        
+        const decks = session.decks || defaultDecks;
+        const matches = session.matches || [];
+        
+        // Get matrix view setting
+        const matrixView = document.querySelector('[data-matrix-view].active')?.dataset.matrixView || 'current';
+        
+        let matchesToUse = matches;
+        if (matrixView === 'all') {
+            // In a real app, you would fetch all players' matches from API
+            matchesToUse = matches; // For now, use current session only
+        }
+        
+        const matrix = {};
+        
+        // Initialize matrix
+        decks.forEach(rowDeck => {
+            matrix[rowDeck] = {};
+            decks.forEach(colDeck => {
+                matrix[rowDeck][colDeck] = { wins: 0, losses: 0 };
+            });
+        });
+        
+        // Populate matrix with match data
+        matchesToUse.forEach(match => {
+            if (matrix[match.deck] && matrix[match.deck][match.opp]) {
+                if (match.result === 'Win') {
+                    matrix[match.deck][match.opp].wins++;
+                } else {
+                    matrix[match.deck][match.opp].losses++;
+                }
+            }
+        });
+        
+        // Create matrix table
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        
+        headerRow.appendChild(document.createElement('th')); // Empty corner cell
+        
+        decks.forEach(deck => {
+            const th = document.createElement('th');
+            th.textContent = deck;
+            headerRow.appendChild(th);
+        });
+        
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        
+        const tbody = document.createElement('tbody');
+        
+        decks.forEach(rowDeck => {
+            const row = document.createElement('tr');
+            const rowHeader = document.createElement('th');
+            rowHeader.textContent = rowDeck;
+            row.appendChild(rowHeader);
+            
+            decks.forEach(colDeck => {
+                const cell = document.createElement('td');
+                const stats = matrix[rowDeck][colDeck];
+                const total = stats.wins + stats.losses;
+                
+                if (total === 0) {
+                    cell.innerHTML = '<div class="cell" style="background:var(--empty);color:var(--muted)">—</div>';
+                } else {
+                    const winRate = Math.round((stats.wins / total) * 1000) / 10;
+                    let backgroundColor;
+                    
+                    if (winRate >= 70) backgroundColor = 'var(--good)';
+                    else if (winRate >= 40) backgroundColor = 'var(--warn)';
+                    else backgroundColor = 'var(--bad)';
+                    
+                    cell.innerHTML = `
+                        <div class="cell" style="background:${backgroundColor};color:#021014">
+                            <div class="pct">${winRate}%</div>
+                            <div class="wl">${stats.wins}-${stats.losses}</div>
+                        </div>
+                    `;
+                }
+                
+                row.appendChild(cell);
+            });
+            
+            tbody.appendChild(row);
+        });
+        
+        table.appendChild(tbody);
+        matrixContainer.appendChild(table);
+        
+    } catch (error) {
+        console.error('Failed to render matrix:', error);
+    }
+}
+
+function updateChart(session) {
+    const canvas = document.getElementById('pointsChart');
+    const ctx = canvas.getContext('2d');
+    
+    if (pointsChart) {
+        pointsChart.destroy();
+    }
+    
+    const matches = session.matches || [];
+    if (matches.length === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'var(--muted)';
+        ctx.textAlign = 'center';
+        ctx.font = '14px Inter';
+        ctx.fillText('No data available', canvas.width / 2, canvas.height / 2);
+        return;
+    }
+    
+    const labels = matches.map((_, index) => index + 1);
+    const data = matches.map(match => match.pointsAfter);
+    
+    pointsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Points',
+                data: data,
+                borderColor: 'rgba(124,92,255,0.95)',
+                backgroundColor: 'rgba(124,92,255,0.1)',
+                tension: 0.3,
+                fill: true,
+                pointRadius: 3,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Match #',
+                        color: 'var(--muted)'
+                    },
+                    grid: {
+                        color: 'rgba(255,255,255,0.05)'
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Points',
+                        color: 'var(--muted)'
+                    },
+                    grid: {
+                        color: 'rgba(255,255,255,0.05)'
+                    }
+                }
+            }
+        }
+    });
+}
+
+// دوال إضافية ناقصة
+async function createSession(name, formula = 'rated', startPoints = null, defaultDeck = null) {
+    try {
+        const sessionData = {
+            name,
+            pointsFormula: formula,
+            pointsStart: startPoints || (formula === 'rated' ? 1500 : 0),
+            defaultDeck,
+            decks: defaultDecks.slice(),
+            matches: []
+        };
+        
+        const newSession = await apiRequest('/sessions', {
+            method: 'POST',
+            body: sessionData
+        });
+        
+        localStorage.setItem('currentSessionId', newSession.id);
+        return newSession;
+    } catch (error) {
+        console.error('Failed to create session:', error);
+        throw error;
+    }
+}
+
+async function addMatch() {
+    try {
+        const deck = document.getElementById('deckSelect').value;
+        const opp = document.getElementById('oppSelect').value;
+        const result = document.getElementById('resultSelect').value;
+        const turn = document.getElementById('turnOrder').value;
+        const ptsAfterOverride = document.getElementById('ptsAfterOverride').value.trim();
+        
+        if (!deck || !opp) {
+            alert('Please select both decks');
+            return;
+        }
+        
+        const currentSession = await getCurrentSession();
+        if (!currentSession) {
+            alert('No session selected');
+            return;
+        }
+        
+        const settings = JSON.parse(localStorage.getItem('duelist_settings')) || {};
+        const isDCFormula = settings.pointsFormula === 'dc';
+        
+        const lastMatch = currentSession.matches?.[currentSession.matches.length - 1];
+        const lastPoints = lastMatch ? lastMatch.pointsAfter : 
+                          (isDCFormula ? 0 : 1500);
+        
+        let newPoints;
+        if (ptsAfterOverride) {
+            newPoints = isDCFormula ? 
+                parseFloat(ptsAfterOverride.replace('k', '')) : 
+                parseInt(ptsAfterOverride);
+        } else {
+            if (isDCFormula) {
+                newPoints = result === 'Win' ? lastPoints + 1 : 
+                           (lastPoints < 15 ? lastPoints - 0.5 : lastPoints - 1);
+            } else {
+                newPoints = result === 'Win' ? lastPoints + 7 : lastPoints - 7;
+            }
+        }
+        
+        const matchData = {
+            deck,
+            opp,
+            result,
+            turn,
+            pointsBefore: lastPoints,
+            pointsAfter: newPoints,
+            createdAt: new Date().toISOString()
+        };
+        
+        const updatedSession = await apiRequest(`/sessions/${currentSession.id}/matches`, {
+            method: 'POST',
+            body: matchData
+        });
+        
+        localStorage.setItem('currentSessionId', updatedSession.id);
+        await renderMatches();
+        
+        // Clear the points override field
+        document.getElementById('ptsAfterOverride').value = '';
+        
+    } catch (error) {
+        console.error('Failed to add match:', error);
+        alert('Failed to add match: ' + error.message);
+    }
+}
+
+// دوال API محسنة
+async function apiRequest(endpoint, options = {}) {
+    const config = {
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`,
+            ...options.headers,
+        },
+        ...options,
+    };
+    
+    if (options.body && !['GET', 'HEAD'].includes(options.method || 'GET')) {
+        config.body = JSON.stringify(options.body);
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE}${endpoint}`, config);
+        
+        if (response.status === 401) {
+            logout();
+            throw new Error('Authentication failed');
+        }
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = 'Request failed';
+            
+            try {
+                const errorData = JSON.parse(errorText);
+                errorMessage = errorData.message || errorMessage;
+            } catch {
+                errorMessage = errorText || errorMessage;
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        // For DELETE requests or empty responses
+        if (response.status === 204 || response.headers.get('content-length') === '0') {
+            return null;
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error(`API request failed for ${endpoint}:`, error);
+        throw error;
+    }
+}
+
+// دوال افتراضية للـ API (للتجربة)
+async function getSessions() {
+    // This is a mock implementation - replace with actual API call
+    try {
+        return await apiRequest('/sessions');
+    } catch (error) {
+        console.error('Failed to fetch sessions:', error);
+        // Return mock data for demonstration
+        return [{
+            id: 'default-session',
+            name: 'Default Session',
+            matches: [],
+            decks: defaultDecks.slice(),
+            pointsStart: 1500,
+            createdAt: new Date().toISOString()
+        }];
+    }
+}
+
+async function getCurrentSession() {
+    const sessions = await getSessions();
+    const currentSessionId = localStorage.getItem('currentSessionId');
+    return sessions.find(s => s.id === currentSessionId) || sessions[0] || null;
+}
+
+// دوال العرض الناقصة
+async function renderSessionList() {
+    try {
+        const sessions = await getSessions();
+        const sessionList = document.getElementById('sessionList');
+        
+        sessionList.innerHTML = '';
+        
+        if (sessions.length === 0) {
+            sessionList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No sessions found</div>';
+            return;
+        }
+        
+        sessions.forEach(session => {
+            const sessionElement = createSessionElement(session);
+            sessionList.appendChild(sessionElement);
+        });
+    } catch (error) {
+        console.error('Failed to render session list:', error);
+    }
+}
+
+function createSessionElement(session) {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;flex-direction:column;padding:12px;border:1px solid rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px;';
+    
+    const matches = session.matches || [];
+    const wins = matches.filter(m => m.result === 'Win').length;
+    const total = matches.length;
+    const winRate = total > 0 ? Math.round(wins / total * 100) : 0;
+    
+    div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div>
+                <div style="font-weight:700">${escapeHtml(session.name)}</div>
+                <div class="small">Created: ${new Date(session.createdAt).toLocaleDateString()} • Matches: ${total}</div>
+            </div>
+            <div style="display:flex;gap:6px;">
+                <button class="btn-ghost" onclick="switchToSession('${session.id}')">Continue</button>
+                <button class="btn-ghost" onclick="renameSession('${session.id}')">Rename</button>
+                <button class="btn-ghost" style="color:var(--bad)" onclick="deleteSession('${session.id}')">Delete</button>
+            </div>
+        </div>
+        <div class="session-stats">
+            <div class="session-stat">
+                <div class="session-stat-value">${winRate}%</div>
+                <div class="session-stat-label">Win Rate</div>
+            </div>
+            <div class="session-stat">
+                <div class="session-stat-value">${total}</div>
+                <div class="session-stat-label">Matches</div>
+            </div>
+        </div>
+    `;
+    
+    return div;
+}
+
+async function switchToSession(sessionId) {
+    localStorage.setItem('currentSessionId', sessionId);
+    await populateSessionSelect();
+    await populateDecks();
+    await renderMatches();
+    document.querySelector('.tab[data-tab="submit"]').click();
+}
+
+async function renameSession(sessionId) {
+    const newName = prompt('Enter new session name:');
+    if (newName && newName.trim()) {
+        try {
+            await apiRequest(`/sessions/${sessionId}`, {
+                method: 'PUT',
+                body: { name: newName.trim() }
+            });
+            await renderSessionList();
+            await populateSessionSelect();
+        } catch (error) {
+            console.error('Failed to rename session:', error);
+            alert('Failed to rename session');
+        }
+    }
+}
+
+// Meta feed rendering
+async function renderMeta(session) {
+    try {
+        const metaYourTbody = document.querySelector('#metaYour tbody');
+        const metaOppTbody = document.querySelector('#metaOpp tbody');
+        
+        metaYourTbody.innerHTML = '';
+        metaOppTbody.innerHTML = '';
+        
+        const matches = session.matches || [];
+        
+        // Calculate meta statistics
+        const yourDecks = {};
+        const oppDecks = {};
+        
+        matches.forEach(match => {
+            // Your deck usage
+            if (!yourDecks[match.deck]) {
+                yourDecks[match.deck] = { total: 0, wins: 0 };
+            }
+            yourDecks[match.deck].total++;
+            if (match.result === 'Win') yourDecks[match.deck].wins++;
+            
+            // Opponent deck usage
+            if (!oppDecks[match.opp]) {
+                oppDecks[match.opp] = { total: 0, wins: 0 };
+            }
+            oppDecks[match.opp].total++;
+            if (match.result === 'Loss') oppDecks[match.opp].wins++;
+        });
+        
+        // Convert to arrays and sort
+        const yourDecksArray = Object.entries(yourDecks)
+            .map(([deck, stats]) => ({
+                deck,
+                times: stats.total,
+                winrate: stats.total > 0 ? Math.round((stats.wins / stats.total) * 1000) / 10 : 0
+            }))
+            .sort((a, b) => b.times - a.times)
+            .slice(0, 10);
+        
+        const oppDecksArray = Object.entries(oppDecks)
+            .map(([deck, stats]) => ({
+                deck,
+                times: stats.total,
+                winrate: stats.total > 0 ? Math.round((stats.wins / stats.total) * 1000) / 10 : 0
+            }))
+            .sort((a, b) => b.times - a.times)
+            .slice(0, 10);
+        
+        // Render your decks
+        yourDecksArray.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(item.deck)}</td>
+                <td>${item.times}</td>
+                <td>${item.winrate}%</td>
+            `;
+            metaYourTbody.appendChild(tr);
+        });
+        
+        // Render opponent decks
+        oppDecksArray.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${escapeHtml(item.deck)}</td>
+                <td>${item.times}</td>
+                <td>${item.winrate}%</td>
+            `;
+            metaOppTbody.appendChild(tr);
+        });
+        
+    } catch (error) {
+        console.error('Failed to render meta feed:', error);
+    }
+}
+
+// Session list rendering
+async function renderSessionList() {
+  try {
+    const sessions = await getSessions();
+    const sessionList = document.getElementById('sessionList');
+    
+    sessionList.innerHTML = '';
+    
+    if (sessions.length === 0) {
+      sessionList.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted)">No sessions found</div>';
+      return;
+    }
+    
+    sessions.forEach(session => {
+      const sessionDiv = document.createElement('div');
+      sessionDiv.style.cssText = 'display:flex;flex-direction:column;padding:12px;border:1px solid rgba(255,255,255,0.02);border-radius:8px;margin-bottom:8px;';
+      
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;';
+      
+      const left = document.createElement('div');
+      left.innerHTML = `
+        <div style="font-weight:700">${escapeHtml(session.name)}</div>
+        <div class="small">Created: ${new Date(session.createdAt).toLocaleString()} • Matches: ${session.matches ? session.matches.length : 0}</div>
+      `;
+      
+      const right = document.createElement('div');
+      right.style.cssText = 'display:flex;gap:6px;';
+      
+      // Continue button
+      const continueBtn = document.createElement('button');
+      continueBtn.textContent = 'Continue';
+      continueBtn.className = 'btn-ghost';
+      continueBtn.addEventListener('click', async () => {
+        localStorage.setItem('currentSessionId', session.id);
+        await populateSessionSelect();
+        await populateDecks();
+        await renderMatches();
+        document.querySelector('.tab[data-tab="submit"]').click();
+      });
+      
+      // Rename button
+      const renameBtn = document.createElement('button');
+      renameBtn.textContent = 'Rename';
+      renameBtn.className = 'btn-ghost';
+      renameBtn.addEventListener('click', async () => {
+        const newName = prompt('New session name:', session.name);
+        if (newName && newName.trim()) {
+          try {
+            await apiRequest(`/sessions/${session.id}`, {
+              method: 'PUT',
+              body: { ...session, name: newName.trim() }
+            });
+            await renderSessionList();
+            await populateSessionSelect();
+          } catch (error) {
+            console.error('Failed to rename session:', error);
+            alert('Failed to rename session');
+          }
+        }
+      });
+      
+      // Delete button
+      const deleteBtn = document.createElement('button');
+      deleteBtn.textContent = 'Delete';
+      deleteBtn.className = 'btn-ghost';
+      deleteBtn.style.color = 'var(--bad)';
+      deleteBtn.addEventListener('click', async () => {
+        if (confirm('Delete session?')) {
+          try {
+            await deleteSession(session.id);
+            await renderSessionList();
+            await populateSessionSelect();
+          } catch (error) {
+            console.error('Failed to delete session:', error);
+            alert('Failed to delete session');
+          }
+        }
+      });
+      
+      right.appendChild(continueBtn);
+      right.appendChild(renameBtn);
+      right.appendChild(deleteBtn);
+      
+      header.appendChild(left);
+      header.appendChild(right);
+      
+      // Session stats
+      const stats = document.createElement('div');
+      stats.className = 'session-stats';
+      
+      const matches = session.matches || [];
+      const wins = matches.filter(m => m.result === 'Win').length;
+      const total = matches.length;
+      const winRate = total > 0 ? Math.round(wins / total * 100) : 0;
+      
+      const matches1st = matches.filter(m => m.turn === '1st');
+      const wins1st = matches1st.filter(m => m.result === 'Win').length;
+      const wr1st = matches1st.length > 0 ? Math.round(wins1st / matches1st.length * 100) : 0;
+      
+      const matches2nd = matches.filter(m => m.turn === '2nd');
+      const wins2nd = matches2nd.filter(m => m.result === 'Win').length;
+      const wr2nd = matches2nd.length > 0 ? Math.round(wins2nd / matches2nd.length * 100) : 0;
+      
+      stats.innerHTML = `
+        <div class="session-stat">
+          <div class="session-stat-value">${winRate}%</div>
+          <div class="session-stat-label">Overall WR</div>
+        </div>
+        <div class="session-stat">
+          <div class="session-stat-value">${wr1st}%</div>
+          <div class="session-stat-label">WR 1st</div>
+        </div>
+        <div class="session-stat">
+          <div class="session-stat-value">${wr2nd}%</div>
+          <div class="session-stat-label">WR 2nd</div>
+        </div>
+        <div class="session-stat">
+          <div class="session-stat-value">${total}</div>
+          <div class="session-stat-label">Matches</div>
+        </div>
+      `;
+      
+      sessionDiv.appendChild(header);
+      sessionDiv.appendChild(stats);
+      sessionList.appendChild(sessionDiv);
+    });
+  } catch (error) {
+    console.error('Failed to render session list:', error);
+  }
+}
+
+// Probability Simulator Functions
+function initDeckSimulator() {
+  const simulateBtn = document.getElementById('simulateBtn');
+  const deckText = document.getElementById('deckText');
+  const comboText = document.getElementById('comboText');
+  const autoSimulate = document.getElementById('autoSimulate');
+  
+  if (simulateBtn) {
+    simulateBtn.addEventListener('click', runDeckSimulation);
+  }
+  
+  if (deckText) {
+    deckText.addEventListener('input', handleDeckInput);
+  }
+  
+  if (comboText) {
+    comboText.addEventListener('input', handleComboInput);
+  }
+  
+  if (autoSimulate) {
+    autoSimulate.addEventListener('change', handleAutoSimulate);
+  }
+  
+  // Deck and combo presets
+  const deckPreset = document.getElementById('deckPreset');
+  const comboPreset = document.getElementById('comboPreset');
+  const newDeckBtn = document.getElementById('newDeckBtn');
+  const newComboBtn = document.getElementById('newComboBtn');
+  
+  if (deckPreset) {
+    deckPreset.addEventListener('change', handleDeckPreset);
+  }
+  
+  if (comboPreset) {
+    comboPreset.addEventListener('change', handleComboPreset);
+  }
+  
+  if (newDeckBtn) {
+    newDeckBtn.addEventListener('click', () => {
+      document.getElementById('deckText').value = '# New Deck\n40 total\n\n# Add your cards here';
+      document.getElementById('deckPreset').value = 'custom';
+    });
+  }
+  
+  if (newComboBtn) {
+    newComboBtn.addEventListener('click', () => {
+      document.getElementById('comboText').value = '# New Combo\n\n# Add your combo requirements here';
+      document.getElementById('comboPreset').value = 'custom';
+    });
+  }
+}
+
+function handleAutoSimulate() {
+  if (document.getElementById('autoSimulate').checked) {
+    runDeckSimulation();
+  }
+}
+
+function handleDeckInput() {
+  document.getElementById('deckPreset').value = 'custom';
+  if (document.getElementById('autoSimulate').checked) {
+    setTimeout(runDeckSimulation, 500);
+  }
+}
+
+function handleComboInput() {
+  document.getElementById('comboPreset').value = 'custom';
+  if (document.getElementById('autoSimulate').checked) {
+    setTimeout(runDeckSimulation, 500);
+  }
+}
+
+function handleDeckPreset(e) {
+  if (e.target.value === 'default') {
+    document.getElementById('deckText').value = `# Add your deck here
+40 total
+3 card a
+3 card b
+3 card c
+3 card d
+3 card e
+3 card f
+1 card g
+2 draw2
+3 pickfrom6`;
+  }
+}
+
+function handleComboPreset(e) {
+  if (e.target.value === 'default') {
+    document.getElementById('comboText').value = `# Add your combo requirements here
+card a
+card b + (card c | card d)
+card b + 2 card e
+card b + card f + -1 card g`;
+  }
+}
+
+function runDeckSimulation() {
+  const deckTextValue = document.getElementById('deckText').value;
+  const comboTextValue = document.getElementById('comboText').value;
+  const handSize = parseInt(document.getElementById('simHandSize').value) || 5;
+  const trials = parseInt(document.getElementById('simTrials').value) || 100000;
+  
+  const deckErrors = document.getElementById('deckErrors');
+  const comboErrors = document.getElementById('comboErrors');
+  
+  deckErrors.textContent = '';
+  comboErrors.textContent = '';
+  
+  const { deck, deckErrors: deckParseErrors, total: deckSize } = parseDeck(deckTextValue);
+  const { combo, comboErrors: comboParseErrors } = parseCombo(comboTextValue);
+  
+  if (deckParseErrors.length > 0) {
+    deckErrors.textContent = 'Deck errors: ' + deckParseErrors.join(', ');
+  }
+  
+  if (comboParseErrors.length > 0) {
+    comboErrors.textContent = 'Combo errors: ' + comboParseErrors.join(', ');
+  }
+  
+  if (deckParseErrors.length > 0 || comboParseErrors.length > 0) {
+    document.getElementById('simulationResult').textContent = 'Error';
+    return;
+  }
+  
+  if (deck.length === 0) {
+    document.getElementById('simulationResult').textContent = '0%';
+    return;
+  }
+  
+  const probability = calculateProbabilityWithSpecialCards(deck, combo, handSize, trials, deckSize);
+  document.getElementById('simulationResult').textContent = (probability * 100).toFixed(4) + '%';
+}
+
+function parseDeck(deckText) {
+  const deck = [];
+  const deckErrors = [];
+  let total = 40;
+  
+  const lines = deckText.split('\n').map(line => line.trim()).filter(line => !!line && !line.startsWith('#'));
+  
+  for (const line of lines) {
+    const totalMatch = line.match(/^(\d+)\s+total$/i);
+    if (totalMatch) {
+      total = parseInt(totalMatch[1]);
+      continue;
+    }
+    
+    const cardMatch = line.match(/^(\d+)\s+(.+)$/);
+    if (!cardMatch) {
+      deckErrors.push(`Invalid line: "${line}"`);
+      continue;
+    }
+    
+    const count = parseInt(cardMatch[1]);
+    const cardName = cardMatch[2].trim();
+    
+    if (isNaN(count) || count < 1) {
+      deckErrors.push(`Invalid count in: "${line}"`);
+      continue;
+    }
+    
+    for (let i = 0; i < count; i++) {
+      deck.push(cardName);
+    }
+  }
+  
+  while (deck.length < total) {
+    deck.push('UNKNOWN CARD');
+  }
+  
+  if (deck.length > total) {
+    deck.length = total;
+  }
+  
+  return { deck, deckErrors, total };
+}
+
+function parseRequirement(requirementText) {
+  requirementText = requirementText.trim();
+  
+  const negativeMatch = requirementText.match(/^-(\d+)\s+(.+)$/);
+  if (negativeMatch) {
+    return {
+      card: negativeMatch[2].trim(),
+      count: parseInt(negativeMatch[1]),
+      inDeck: true
+    };
+  }
+  
+  const positiveMatch = requirementText.match(/^(\d+)\s+(.+)$/);
+  if (positiveMatch) {
+    return {
+      card: positiveMatch[2].trim(),
+      count: parseInt(positiveMatch[1]),
+      inDeck: false
+    };
+  }
+  
+  return {
+    card: requirementText,
+    count: 1,
+    inDeck: false
+  };
+}
+
+function parseCombo(comboText) {
+  const combo = [];
+  const comboErrors = [];
+  
+  const lines = comboText.split('\n').map(line => line.trim()).filter(line => !!line && !line.startsWith('#'));
+  
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    
+    try {
+      const andGroups = line.split('+').map(part => part.trim());
+      const comboLine = [];
+      
+      for (const andPart of andGroups) {
+        if (andPart.startsWith('(') && andPart.endsWith(')')) {
+          const orParts = andPart.slice(1, -1).split('|').map(p => p.trim());
+          const orRequirements = orParts.map(parseRequirement);
+          comboLine.push(orRequirements);
+        } else {
+          comboLine.push([parseRequirement(andPart)]);
+        }
+      }
+      
+      combo.push(comboLine);
+    } catch (error) {
+      comboErrors.push(`Error parsing: "${line}" - ${error.message}`);
+    }
+  }
+  
+  return { combo, comboErrors };
+}
+
+function calculateProbabilityWithSpecialCards(deck, combo, handSize, trials, deckSize) {
+  let successCount = 0;
+  
+  for (let i = 0; i < trials; i++) {
+    const result = drawHandWithSpecialCards(deck, handSize, deckSize);
+    if (checkComboImproved(result.hand, combo, result.remainingDeck)) {
+      successCount++;
+    }
+  }
+  
+  return successCount / trials;
+}
+
+function drawHandWithSpecialCards(deck, handSize, deckSize) {
+  const shuffled = [...deck];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  
+  let hand = shuffled.slice(0, handSize);
+  let remainingDeck = shuffled.slice(handSize);
+  
+  let finalHand = [...hand];
+  let finalRemainingDeck = [...remainingDeck];
+  
+  for (let i = 0; i < hand.length; i++) {
+    const card = hand[i];
+    
+    if (card === 'draw2' && finalRemainingDeck.length >= 2) {
+      finalHand = finalHand.filter(c => c !== 'draw2');
+      finalHand.push(...finalRemainingDeck.splice(0, 2));
+    } else if (card.startsWith('pickfrom') && finalRemainingDeck.length >= 6) {
+      const pickCount = parseInt(card.replace('pickfrom', ''));
+      if (!isNaN(pickCount) && finalRemainingDeck.length >= pickCount) {
+        finalHand = finalHand.filter(c => c !== card);
+        const options = finalRemainingDeck.splice(0, pickCount);
+        const chosen = options[Math.floor(Math.random() * options.length)];
+        finalHand.push(chosen);
+        finalRemainingDeck.push(...options.filter(c => c !== chosen));
+      }
+    }
+  }
+  
+  return {
+    hand: finalHand,
+    remainingDeck: finalRemainingDeck
+  };
+}
+
+function checkComboImproved(hand, combo, remainingDeck) {
+  for (const comboLine of combo) {
+    if (checkComboLineImproved(hand, comboLine, remainingDeck)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function checkComboLineImproved(hand, comboLine, remainingDeck) {
+  for (const andCondition of comboLine) {
+    let conditionMet = false;
+    
+    for (const requirement of andCondition) {
+      if (checkRequirementImproved(hand, requirement, remainingDeck)) {
+        conditionMet = true;
+        break;
+      }
+    }
+    
+    if (!conditionMet) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+function checkRequirementImproved(hand, requirement, remainingDeck) {
+  const { card, count, inDeck } = requirement;
+  
+  if (inDeck) {
+    const totalInDeck = remainingDeck.filter(c => c === card).length;
+    return totalInDeck >= count;
+  } else {
+    const inHand = hand.filter(c => c === card).length;
+    return inHand >= count;
+  }
+}
+
+
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', initAuth);
+</script>
+</body>
+</html>
